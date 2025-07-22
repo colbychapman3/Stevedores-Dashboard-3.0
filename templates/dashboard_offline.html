@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Stevedores Operations{% endblock %}
+
+{% block extra_css %}
+<style>
+    .offline-mode-indicator {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .data-status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .data-status-fresh {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .data-status-stale {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .data-status-expired {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .vessel-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .vessel-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .offline-vessel {
+        border-left: 4px solid #f59e0b;
+        background: #fefbf2;
+    }
+    
+    .progress-ring {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-circle {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.3s ease;
+    }
+    
+    .loading-placeholder {
+        background: linear-gradient(90deg, #f3f4f6, #e5e7eb, #f3f4f6);
+        background-size: 200% 100%;
+        animation: loading 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    .refresh-btn {
+        transition: transform 0.3s ease;
+    }
+    
+    .refresh-btn:active {
+        transform: rotate(360deg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Dashboard Header with Offline Status -->
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+        <div class="flex-1">
+            <div class="flex items-center gap-4">
+                <h1 class="text-3xl font-bold text-gray-900">
+                    <i class="fas fa-ship text-blue-600 mr-3"></i>
+                    Stevedoring Operations
+                </h1>
+                <div id="data-status-indicator" class="data-status-indicator data-status-fresh">
+                    <i class="fas fa-circle"></i>
+                    <span>Live Data</span>
+                </div>
+            </div>
+            <p class="text-gray-600 mt-2">Welcome back, {{ current_user.username }}!</p>
+            <div id="offline-mode-banner" class="offline-mode-indicator mt-2 hidden">
+                <i class="fas fa-wifi-slash"></i>
+                <span>Operating in offline mode - Data will sync when connection returns</span>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+            <div class="text-right">
+                <div class="text-sm text-gray-500">Local Time</div>
+                <div id="current-time" class="text-lg font-semibold text-gray-900"></div>
+            </div>
+            <button id="refresh-btn" class="refresh-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition duration-200" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <a href="/wizard" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                <i class="fas fa-plus mr-2"></i>
+                New Vessel Operation
+            </a>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+            <div class="flex items-center">
+                <i class="fas fa-ship text-blue-500 text-2xl mr-4"></i>
+                <div>
+                    <p class="text-sm text-gray-600">Total Vessels</p>
+                    <p class="text-2xl font-bold text-gray-900" id="total-vessels">
+                        <span class="loading-placeholder rounded">--</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+            <div class="flex items-center">
+                <i class="fas fa-anchor text-green-500 text-2xl mr-4"></i>
+                <div>
+                    <p class="text-sm text-gray-600">Active Operations</p>
+                    <p class="text-2xl font-bold text-gray-900" id="active-vessels">
+                        <span class="loading-placeholder rounded">--</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-orange-500 text-2xl mr-4"></i>
+                <div>
+                    <p class="text-sm text-gray-600">Completed</p>
+                    <p class="text-2xl font-bold text-gray-900" id="completed-vessels">
+                        <span class="loading-placeholder rounded">--</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+            <div class="flex items-center">
+                <i class="fas fa-cloud text-yellow-500 text-2xl mr-4"></i>
+                <div>
+                    <p class="text-sm text-gray-600">Offline Created</p>
+                    <p class="text-2xl font-bold text-gray-900" id="offline-vessels">
+                        <span class="loading-placeholder rounded">--</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+            <div class="flex items-center">
+                <i class="fas fa-chart-line text-purple-500 text-2xl mr-4"></i>
+                <div>
+                    <p class="text-sm text-gray-600">Avg Progress</p>
+                    <p class="text-2xl font-bold text-gray-900" id="average-progress">
+                        <span class="loading-placeholder rounded">--%</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vessels List -->
+    <div class="bg-white rounded-lg shadow-md">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-semibold text-gray-900">
+                    <i class="fas fa-list mr-2"></i>
+                    Vessel Operations
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500">Last updated: <span id="last-updated">Loading...</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <!-- Loading State -->
+            <div id="vessels-loading" class="space-y-4">
+                <div class="loading-placeholder rounded-lg h-20"></div>
+                <div class="loading-placeholder rounded-lg h-20"></div>
+                <div class="loading-placeholder rounded-lg h-20"></div>
+            </div>
+            
+            <!-- No Vessels State -->
+            <div id="no-vessels" class="text-center py-12 hidden">
+                <i class="fas fa-ship text-6xl text-gray-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No vessels found</h3>
+                <p class="text-gray-500 mb-4">Create your first vessel operation to get started.</p>
+                <a href="/wizard" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg inline-block">
+                    <i class="fas fa-plus mr-2"></i>
+                    Create Vessel Operation
+                </a>
+            </div>
+            
+            <!-- Vessels Grid -->
+            <div id="vessels-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                <!-- Vessel cards will be dynamically populated -->
+            </div>
+            
+            <!-- Error State -->
+            <div id="error-state" class="text-center py-12 hidden">
+                <i class="fas fa-exclamation-triangle text-6xl text-red-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Error Loading Data</h3>
+                <p class="text-gray-500 mb-4" id="error-message">Unable to load vessel data.</p>
+                <button onclick="loadDashboardData()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                    <i class="fas fa-retry mr-2"></i>
+                    Retry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vessel Card Template -->
+<template id="vessel-card-template">
+    <div class="vessel-card bg-white rounded-lg shadow-md p-6 border-l-4" data-vessel-id="">
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold text-gray-900 vessel-name"></h3>
+                <p class="text-sm text-gray-600 vessel-type"></p>
+                <p class="text-sm text-gray-500 vessel-port"></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="status-badge px-2 py-1 rounded-full text-xs font-medium"></span>
+                <div class="offline-indicator hidden">
+                    <i class="fas fa-cloud text-yellow-500" title="Created offline"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm text-gray-600">Progress</span>
+                    <span class="text-sm font-medium progress-text">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="progress-bar bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="ml-4">
+                <svg class="progress-ring w-12 h-12">
+                    <circle class="progress-circle text-gray-200" cx="24" cy="24" r="20" stroke="currentColor"></circle>
+                    <circle class="progress-circle text-blue-600" cx="24" cy="24" r="20" stroke="currentColor" 
+                            stroke-dasharray="0 125.6" stroke-dashoffset="0"></circle>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-4 text-xs text-gray-500">
+            <span class="vessel-eta"></span>
+            <span class="vessel-updated"></span>
+        </div>
+    </div>
+</template>
+
+<script src="/offline-dashboard/client-data-manager.js"></script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let dashboardData = null;
+let refreshInterval = null;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDashboard();
+    startAutoRefresh();
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 1000);
+});
+
+function initializeDashboard() {
+    console.log('🏗️ Initializing offline-capable dashboard');
+    
+    // Setup refresh button
+    document.getElementById('refresh-btn').addEventListener('click', function() {
+        this.querySelector('i').classList.add('fa-spin');
+        loadDashboardData().finally(() => {
+            this.querySelector('i').classList.remove('fa-spin');
+        });
+    });
+    
+    // Load initial data
+    loadDashboardData();
+}
+
+async function loadDashboardData(forceOffline = false) {
+    try {
+        showLoadingState();
+        
+        const url = `/offline-dashboard/dashboard-data${forceOffline ? '?offline=true' : ''}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        dashboardData = await response.json();
+        
+        if (dashboardData.success) {
+            updateDashboardUI(dashboardData);
+            updateDataStatusIndicator(dashboardData);
+        } else {
+            throw new Error(dashboardData.error || 'Unknown error');
+        }
+        
+    } catch (error) {
+        console.error('Dashboard data loading error:', error);
+        
+        // Try offline fallback if online request failed
+        if (!forceOffline) {
+            console.log('Trying offline fallback...');
+            await loadDashboardData(true);
+        } else {
+            showErrorState(error.message);
+        }
+    }
+}
+
+function updateDashboardUI(data) {
+    console.log(`📊 Updating dashboard UI (${data.mode} mode)`);
+    
+    // Update summary cards
+    document.getElementById('total-vessels').textContent = data.summary.total_vessels;
+    document.getElementById('active-vessels').textContent = data.summary.active_vessels;
+    document.getElementById('completed-vessels').textContent = data.summary.completed_vessels;
+    document.getElementById('offline-vessels').textContent = data.summary.offline_vessels;
+    document.getElementById('average-progress').textContent = `${data.summary.average_progress}%`;
+    
+    // Update last updated time
+    const lastUpdated = data.last_updated ? 
+        new Date(data.last_updated).toLocaleString() : 'Unknown';
+    document.getElementById('last-updated').textContent = lastUpdated;
+    
+    // Update vessels list
+    updateVesselsList(data.vessels);
+    
+    // Show/hide offline mode banner
+    const offlineBanner = document.getElementById('offline-mode-banner');
+    if (data.mode === 'offline' || data.mode === 'offline_fallback' || data.summary.is_offline_mode) {
+        offlineBanner.classList.remove('hidden');
+    } else {
+        offlineBanner.classList.add('hidden');
+    }
+    
+    hideLoadingState();
+}
+
+function updateVesselsList(vessels) {
+    const grid = document.getElementById('vessels-grid');
+    const noVessels = document.getElementById('no-vessels');
+    
+    if (!vessels || vessels.length === 0) {
+        grid.classList.add('hidden');
+        noVessels.classList.remove('hidden');
+        return;
+    }
+    
+    grid.classList.remove('hidden');
+    noVessels.classList.add('hidden');
+    
+    // Clear existing vessels
+    grid.innerHTML = '';
+    
+    // Add vessel cards
+    vessels.forEach(vessel => {
+        const card = createVesselCard(vessel);
+        grid.appendChild(card);
+    });
+}
+
+function createVesselCard(vessel) {
+    const template = document.getElementById('vessel-card-template');
+    const card = template.content.cloneNode(true);
+    
+    // Set data attribute
+    const cardElement = card.querySelector('.vessel-card');
+    cardElement.setAttribute('data-vessel-id', vessel.id || vessel.offline_id);
+    
+    // Set border color based on status
+    const statusColors = {
+        'expected': 'border-blue-500',
+        'arrived': 'border-yellow-500',
+        'berthed': 'border-green-500',
+        'operations_active': 'border-orange-500',
+        'operations_complete': 'border-gray-500'
+    };
+    cardElement.classList.add(statusColors[vessel.status] || 'border-gray-500');
+    
+    // Mark offline vessels
+    if (vessel.offline_created) {
+        cardElement.classList.add('offline-vessel');
+        card.querySelector('.offline-indicator').classList.remove('hidden');
+    }
+    
+    // Fill in vessel information
+    card.querySelector('.vessel-name').textContent = vessel.name;
+    card.querySelector('.vessel-type').textContent = vessel.vessel_type;
+    card.querySelector('.vessel-port').textContent = vessel.port_of_call || 'Port TBD';
+    
+    // Status badge
+    const statusBadge = card.querySelector('.status-badge');
+    const statusInfo = getStatusInfo(vessel.status);
+    statusBadge.textContent = statusInfo.text;
+    statusBadge.className = `status-badge px-2 py-1 rounded-full text-xs font-medium ${statusInfo.class}`;
+    
+    // Progress
+    const progress = vessel.progress_percentage || 0;
+    card.querySelector('.progress-text').textContent = `${Math.round(progress)}%`;
+    card.querySelector('.progress-bar').style.width = `${progress}%`;
+    
+    // Progress ring
+    const circumference = 2 * Math.PI * 20; // radius = 20
+    const progressRing = card.querySelector('.progress-circle:last-child');
+    const dashArray = (progress / 100) * circumference;
+    progressRing.setAttribute('stroke-dasharray', `${dashArray} ${circumference}`);
+    
+    // Timestamps
+    card.querySelector('.vessel-eta').textContent = vessel.eta ? 
+        `ETA: ${new Date(vessel.eta).toLocaleDateString()}` : '';
+    card.querySelector('.vessel-updated').textContent = vessel.updated_at ? 
+        `Updated: ${new Date(vessel.updated_at).toLocaleString()}` : '';
+    
+    // Click handler
+    cardElement.addEventListener('click', () => {
+        const vesselId = vessel.id || vessel.offline_id;
+        window.location.href = `/vessel/${vesselId}`;
+    });
+    
+    return card;
+}
+
+function getStatusInfo(status) {
+    const statusMap = {
+        'expected': { text: 'Expected', class: 'bg-blue-100 text-blue-800' },
+        'arrived': { text: 'Arrived', class: 'bg-yellow-100 text-yellow-800' },
+        'berthed': { text: 'Berthed', class: 'bg-green-100 text-green-800' },
+        'operations_active': { text: 'Active', class: 'bg-orange-100 text-orange-800' },
+        'operations_complete': { text: 'Complete', class: 'bg-gray-100 text-gray-800' }
+    };
+    
+    return statusMap[status] || { text: 'Unknown', class: 'bg-gray-100 text-gray-800' };
+}
+
+function updateDataStatusIndicator(data) {
+    const indicator = document.getElementById('data-status-indicator');
+    const statusClass = `data-status-${data.data_status}`;
+    
+    // Reset classes
+    indicator.className = 'data-status-indicator';
+    indicator.classList.add(statusClass);
+    
+    const statusText = {
+        'fresh': 'Live Data',
+        'stale': 'Stale Data',
+        'expired': 'Offline Data',
+        'error': 'Data Error'
+    };
+    
+    indicator.querySelector('span').textContent = statusText[data.data_status] || 'Unknown';
+}
+
+function showLoadingState() {
+    document.getElementById('vessels-loading').classList.remove('hidden');
+    document.getElementById('vessels-grid').classList.add('hidden');
+    document.getElementById('no-vessels').classList.add('hidden');
+    document.getElementById('error-state').classList.add('hidden');
+}
+
+function hideLoadingState() {
+    document.getElementById('vessels-loading').classList.add('hidden');
+}
+
+function showErrorState(message) {
+    document.getElementById('error-message').textContent = message;
+    document.getElementById('error-state').classList.remove('hidden');
+    document.getElementById('vessels-loading').classList.add('hidden');
+    document.getElementById('vessels-grid').classList.add('hidden');
+    document.getElementById('no-vessels').classList.add('hidden');
+}
+
+function startAutoRefresh() {
+    // Refresh every 30 seconds if online
+    refreshInterval = setInterval(() => {
+        if (navigator.onLine && !document.hidden) {
+            loadDashboardData();
+        }
+    }, 30000);
+}
+
+function updateCurrentTime() {
+    const now = new Date();
+    document.getElementById('current-time').textContent = now.toLocaleTimeString();
+}
+
+// Handle visibility change (pause refresh when tab is hidden)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+    } else {
+        if (!refreshInterval) {
+            startAutoRefresh();
+        }
+        // Refresh when tab becomes visible
+        loadDashboardData();
+    }
+});
+
+console.log('✅ Offline-capable dashboard loaded');
+</script>
+{% endblock %}

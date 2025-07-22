@@ -74,11 +74,27 @@ def index():
     return render_template('index.html')
 
 @app.route('/dashboard')
+@app.route('/')
 @login_required
 def dashboard():
-    """Main stevedoring dashboard"""
-    vessels = Vessel.query.all()
-    return render_template('dashboard.html', vessels=vessels)
+    """Main stevedoring dashboard with offline support"""
+    try:
+        # Try to get vessels from database
+        vessels = Vessel.query.all()
+        
+        # Cache vessel data for offline use
+        from utils.offline_data_manager import OfflineDataManager
+        offline_manager = OfflineDataManager()
+        vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
+        offline_manager.cache_vessel_data(vessel_list, "server")
+        
+        return render_template('dashboard_offline.html', vessels=vessels)
+        
+    except Exception as e:
+        logger.error(f"Dashboard error: {e}")
+        
+        # Fallback to offline-only template
+        return render_template('dashboard_offline.html', vessels=[])
 
 
 # PWA routes
@@ -253,14 +269,17 @@ from routes.auth import auth_bp
 from routes.wizard import wizard_bp
 from routes.document_processing import document_bp
 from routes.sync_routes import sync_bp
+from routes.offline_dashboard import offline_dashboard_bp
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(wizard_bp, url_prefix='/wizard')
 app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
+app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
 
-# Exempt document processing and sync routes from CSRF for offline functionality
+# Exempt document processing, sync, and offline dashboard routes from CSRF for offline functionality
 csrf.exempt(document_bp)
 csrf.exempt(sync_bp)
+csrf.exempt(offline_dashboard_bp)
 
 # Database initialization
 def init_database():
