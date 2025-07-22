@@ -6,6 +6,7 @@
 let currentStep = 1;
 let extractedData = {};
 let wizardData = {};
+let documentProcessor = null;
 
 // Initialize wizard when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -13,8 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeWizard() {
+    // Load document processor for offline auto-fill
+    loadDocumentProcessor();
+    
     // Load any saved wizard data from localStorage (offline support)
     loadSavedWizardData();
+    
+    // Check for server-side auto-fill data
+    checkAutoFillData();
     
     // Setup auto-save functionality
     setupAutoSave();
@@ -26,10 +33,13 @@ function initializeWizard() {
     // Setup drag and drop for document upload
     setupDragAndDrop();
     
+    // Setup document upload handlers
+    setupDocumentUpload();
+    
     // Setup form submission handler
     document.getElementById('vesselWizardForm').addEventListener('submit', handleFormSubmission);
     
-    console.log('Vessel wizard initialized with offline support');
+    console.log('Vessel wizard initialized with offline document processing support');
 }
 
 // Wizard Navigation Functions
@@ -542,4 +552,260 @@ window.addEventListener('online', () => {
     }
 });
 
-console.log('Enhanced wizard with offline support loaded');
+// Document Processing Functions
+async function loadDocumentProcessor() {
+    try {
+        // Load offline document processor
+        if (!window.documentProcessor) {
+            const script = document.createElement('script');
+            script.src = '/document/client-processor.js';
+            document.head.appendChild(script);
+            
+            // Wait for script to load
+            await new Promise((resolve) => {
+                script.onload = resolve;
+            });
+        }
+        documentProcessor = window.documentProcessor;
+        console.log('Document processor loaded for offline auto-fill');
+    } catch (error) {
+        console.error('Failed to load document processor:', error);
+    }
+}
+
+async function checkAutoFillData() {
+    try {
+        const response = await fetch('/document/get-auto-fill');
+        const data = await response.json();
+        
+        if (data.has_data) {
+            displayAutoFillOption(data);
+        }
+    } catch (error) {
+        console.log('No server-side auto-fill data available');
+    }
+}
+
+function displayAutoFillOption(autoFillData) {
+    const autoFillBanner = document.createElement('div');
+    autoFillBanner.className = 'auto-fill-banner';
+    autoFillBanner.innerHTML = `
+        <div class="auto-fill-content">
+            <div class="auto-fill-icon">📄</div>
+            <div class="auto-fill-text">
+                <strong>Auto-fill Available</strong>
+                <p>Found data from ${autoFillData.document_source} (${Math.round(autoFillData.confidence_score * 100)}% confidence)</p>
+            </div>
+            <div class="auto-fill-actions">
+                <button onclick="applyAutoFill()" class="btn-auto-fill">Apply Auto-fill</button>
+                <button onclick="dismissAutoFill()" class="btn-dismiss">Dismiss</button>
+            </div>
+        </div>
+    `;
+    
+    const wizardContainer = document.querySelector('.wizard-container');
+    wizardContainer.insertBefore(autoFillBanner, wizardContainer.firstChild);
+    
+    // Store auto-fill data
+    window.availableAutoFill = autoFillData;
+}
+
+async function applyAutoFill() {
+    if (!window.availableAutoFill) return;
+    
+    const autoFillData = window.availableAutoFill.wizard_data;
+    
+    // Populate Step 1
+    if (autoFillData.step_1) {
+        const step1Data = autoFillData.step_1;
+        if (step1Data.vessel_name) document.getElementById('vesselName').value = step1Data.vessel_name;
+        if (step1Data.vessel_type) document.getElementById('vesselType').value = step1Data.vessel_type;
+        if (step1Data.port_of_call) document.getElementById('portOfCall').value = step1Data.port_of_call;
+        if (step1Data.eta) document.getElementById('eta').value = step1Data.eta;
+    }
+    
+    // Populate Step 2
+    if (autoFillData.step_2) {
+        const step2Data = autoFillData.step_2;
+        if (step2Data.total_cargo_capacity) document.getElementById('totalCapacity').value = step2Data.total_cargo_capacity;
+        if (step2Data.cargo_type) document.getElementById('cargoType').value = step2Data.cargo_type;
+        if (step2Data.heavy_equipment_count) document.getElementById('heavyEquipment').value = step2Data.heavy_equipment_count;
+    }
+    
+    // Populate Step 3
+    if (autoFillData.step_3) {
+        const step3Data = autoFillData.step_3;
+        if (step3Data.current_berth) document.getElementById('berth').value = step3Data.current_berth;
+        if (step3Data.shift_start) document.getElementById('shiftStart').value = step3Data.shift_start;
+        if (step3Data.shift_end) document.getElementById('shiftEnd').value = step3Data.shift_end;
+        if (step3Data.drivers_assigned) document.getElementById('driversAssigned').value = step3Data.drivers_assigned;
+        if (step3Data.tico_vehicles_needed) document.getElementById('ticoVehicles').value = step3Data.tico_vehicles_needed;
+    }
+    
+    // Save auto-fill source
+    wizardData.documentSource = window.availableAutoFill.document_source;
+    wizardData.autoFilled = true;
+    
+    // Remove banner
+    const banner = document.querySelector('.auto-fill-banner');
+    if (banner) banner.remove();
+    
+    // Clear server-side auto-fill data
+    await fetch('/document/clear-auto-fill', { method: 'POST' });
+    
+    showAlert('Form auto-filled successfully!', 'success');
+}
+
+function dismissAutoFill() {
+    const banner = document.querySelector('.auto-fill-banner');
+    if (banner) banner.remove();
+    
+    // Clear server-side auto-fill data
+    fetch('/document/clear-auto-fill', { method: 'POST' });
+}
+
+function setupDocumentUpload() {
+    const fileInput = document.getElementById('documentUpload');
+    const textArea = document.getElementById('documentText');
+    const processTextBtn = document.getElementById('processTextBtn');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', handleDocumentUpload);
+    }
+    
+    if (processTextBtn) {
+        processTextBtn.addEventListener('click', processTextContent);
+    }
+}
+
+async function handleDocumentUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Show loading
+    setUploadStatus('processing', 'Processing document...');
+    
+    try {
+        // Try server-side processing first
+        const formData = new FormData();
+        formData.append('document', file);
+        
+        const response = await fetch('/document/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            setUploadStatus('success', `Document processed successfully! Confidence: ${Math.round(result.extracted_data.confidence_score * 100)}%`);
+            applyExtractedData(result.wizard_data);
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.log('Server processing failed, trying offline processing:', error);
+        
+        // Fall back to client-side processing
+        if (documentProcessor && file.type === 'text/plain') {
+            const text = await file.text();
+            const result = documentProcessor.processText(text, file.name);
+            
+            if (result.success) {
+                setUploadStatus('success', `Document processed offline! Confidence: ${Math.round(result.confidence_score * 100)}%`);
+                applyExtractedData(result.wizard_data);
+            } else {
+                setUploadStatus('error', 'Document processing failed: ' + result.error);
+            }
+        } else {
+            setUploadStatus('error', 'Document processing failed. Please try pasting text content instead.');
+        }
+    }
+}
+
+async function processTextContent() {
+    const textArea = document.getElementById('documentText');
+    const text = textArea.value.trim();
+    
+    if (!text) {
+        showAlert('Please enter document text to process', 'error');
+        return;
+    }
+    
+    setUploadStatus('processing', 'Processing text content...');
+    
+    try {
+        // Try server-side processing first
+        const response = await fetch('/document/process-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text, filename: 'pasted_content.txt' })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            setUploadStatus('success', `Text processed successfully! Confidence: ${Math.round(result.extracted_data.confidence_score * 100)}%`);
+            applyExtractedData(result.wizard_data);
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.log('Server processing failed, trying offline processing:', error);
+        
+        // Fall back to client-side processing
+        if (documentProcessor) {
+            const result = documentProcessor.processText(text, 'pasted_content.txt');
+            
+            if (result.success) {
+                setUploadStatus('success', `Text processed offline! Confidence: ${Math.round(result.confidence_score * 100)}%`);
+                applyExtractedData(result.wizard_data);
+            } else {
+                setUploadStatus('error', 'Text processing failed: ' + result.error);
+            }
+        } else {
+            setUploadStatus('error', 'Text processing unavailable');
+        }
+    }
+}
+
+function applyExtractedData(wizardData) {
+    // Apply extracted data to form fields
+    Object.keys(wizardData).forEach(stepKey => {
+        const stepData = wizardData[stepKey];
+        Object.keys(stepData).forEach(fieldKey => {
+            const element = document.getElementById(fieldKey) || 
+                          document.querySelector(`[name="${fieldKey}"]`);
+            if (element && stepData[fieldKey]) {
+                element.value = stepData[fieldKey];
+                element.classList.add('auto-filled');
+            }
+        });
+    });
+    
+    // Mark as auto-filled
+    wizardData.autoFilled = true;
+    wizardData.documentSource = wizardData.step_4?.document_source || 'processed_document';
+    
+    // Save to wizard data
+    saveStepData(currentStep);
+    
+    showAlert('Form fields populated from document!', 'success');
+}
+
+function setUploadStatus(type, message) {
+    const statusElement = document.getElementById('uploadStatus');
+    if (!statusElement) return;
+    
+    statusElement.className = `upload-status ${type}`;
+    statusElement.textContent = message;
+    statusElement.classList.remove('hidden');
+    
+    if (type === 'success' || type === 'error') {
+        setTimeout(() => {
+            statusElement.classList.add('hidden');
+        }, 5000);
+    }
+}
+
+console.log('Enhanced wizard with offline document processing loaded');
