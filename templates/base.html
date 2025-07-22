@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#3b82f6">
+    
+    <title>{% block title %}Stevedores Dashboard 3.0{% endblock %}</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Stevedores Dashboard">
+    
+    <!-- Offline-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        /* Offline indicator */
+        .offline-indicator {
+            background: #ef4444;
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .offline-indicator.show {
+            transform: translateY(0);
+        }
+        
+        /* PWA install prompt */
+        .install-prompt {
+            background: #3b82f6;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .install-prompt.show {
+            transform: translateY(0);
+        }
+        
+        /* Sync status indicator */
+        .sync-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            z-index: 999;
+        }
+        
+        .sync-status.synced {
+            background: #10b981;
+            color: white;
+        }
+        
+        .sync-status.syncing {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .sync-status.offline {
+            background: #6b7280;
+            color: white;
+        }
+        
+        /* Loading states for offline operations */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #3b82f6;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Offline Indicator -->
+    <div id="offline-indicator" class="offline-indicator">
+        <i class="fas fa-wifi-slash"></i>
+        You are currently offline. Data will sync when connection returns.
+    </div>
+    
+    <!-- Sync Status Indicator -->
+    <div id="sync-status" class="sync-status synced" style="display: none;">
+        <i class="fas fa-check-circle"></i>
+        <span>Synced</span>
+    </div>
+    
+    <!-- PWA Install Prompt -->
+    <div id="install-prompt" class="install-prompt">
+        <span>Install Stevedores Dashboard for offline use</span>
+        <button id="install-btn" class="ml-4 bg-white text-blue-600 px-4 py-1 rounded">Install</button>
+        <button id="dismiss-install" class="ml-2 text-white underline">Not now</button>
+    </div>
+    
+    <!-- Main Navigation (if logged in) -->
+    {% if current_user.is_authenticated %}
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-ship text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold">Stevedores Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm">{{ current_user.username }}</span>
+                    <a href="/auth/logout" class="hover:text-blue-200">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="max-w-7xl mx-auto px-4 mt-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} mb-3 p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700 border border-red-300{% elif category == 'success' %}bg-green-100 text-green-700 border border-green-300{% else %}bg-blue-100 text-blue-700 border border-blue-300{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Base JavaScript for offline functionality -->
+    <script>
+        // Connection status tracking
+        let isOnline = navigator.onLine;
+        let isAppInstalled = false;
+        let deferredPrompt;
+        
+        // Update UI based on connection status
+        function updateConnectionStatus() {
+            const offlineIndicator = document.getElementById('offline-indicator');
+            const syncStatus = document.getElementById('sync-status');
+            
+            if (isOnline) {
+                offlineIndicator.classList.remove('show');
+                syncStatus.className = 'sync-status synced';
+                syncStatus.style.display = 'block';
+                syncStatus.innerHTML = '<i class="fas fa-check-circle"></i> <span>Online</span>';
+            } else {
+                offlineIndicator.classList.add('show');
+                syncStatus.className = 'sync-status offline';
+                syncStatus.style.display = 'block';
+                syncStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> <span>Offline</span>';
+            }
+        }
+        
+        // Listen for connection changes
+        window.addEventListener('online', () => {
+            isOnline = true;
+            updateConnectionStatus();
+            // Trigger sync when coming back online
+            if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                navigator.serviceWorker.ready.then(registration => {
+                    return registration.sync.register('cargo-tally-sync');
+                });
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            updateConnectionStatus();
+        });
+        
+        // PWA installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            if (!isAppInstalled) {
+                document.getElementById('install-prompt').classList.add('show');
+            }
+        });
+        
+        document.getElementById('install-btn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                
+                if (outcome === 'accepted') {
+                    isAppInstalled = true;
+                }
+                
+                deferredPrompt = null;
+                document.getElementById('install-prompt').classList.remove('show');
+            }
+        });
+        
+        document.getElementById('dismiss-install').addEventListener('click', () => {
+            document.getElementById('install-prompt').classList.remove('show');
+        });
+        
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+        
+        // Initialize connection status
+        updateConnectionStatus();
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

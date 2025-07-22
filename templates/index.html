@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Stevedores Dashboard 3.0 - Maritime Operations Management{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <i class="fas fa-ship text-6xl text-blue-600 mb-4"></i>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Stevedores Dashboard 3.0</h1>
+            <p class="text-gray-600 mb-8">Offline-capable maritime operations management for ship and shore</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="space-y-4">
+                <a href="/auth/login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Login to Dashboard
+                </a>
+                
+                <div class="text-center text-sm text-gray-500">
+                    <p>Built for reliable operations regardless of connectivity</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Key Features</h3>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="flex items-start">
+                    <i class="fas fa-wifi-slash text-green-600 mt-1 mr-3"></i>
+                    <div>
+                        <h4 class="font-medium">Offline Operations</h4>
+                        <p class="text-sm text-gray-600">Full functionality without internet connection</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-clipboard-list text-blue-600 mt-1 mr-3"></i>
+                    <div>
+                        <h4 class="font-medium">4-Step Vessel Wizard</h4>
+                        <p class="text-sm text-gray-600">Quick vessel setup with document auto-fill</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-tachometer-alt text-orange-600 mt-1 mr-3"></i>
+                    <div>
+                        <h4 class="font-medium">Real-Time Cargo Tracking</h4>
+                        <p class="text-sm text-gray-600">Live tally updates with widget sync</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-mobile-alt text-purple-600 mt-1 mr-3"></i>
+                    <div>
+                        <h4 class="font-medium">Mobile PWA</h4>
+                        <p class="text-sm text-gray-600">Install as app on mobile devices</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center text-xs text-gray-500">
+            Stevedores Dashboard 3.0 - Built for Maritime Operations
+        </div>
+    </div>
+</div>
+{% endblock %}

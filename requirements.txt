@@ -1,0 +1,19 @@
+# Flask Core - Minimal for offline-first app
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-Login==0.6.3
+Flask-WTF==1.1.1
+
+# Database
+SQLAlchemy==2.0.21
+
+# Security
+Werkzeug==2.3.7
+WTForms==3.0.1
+
+# Utilities
+python-dotenv==1.0.0
+click==8.1.7
+
+# Production WSGI Server
+gunicorn==21.2.0
