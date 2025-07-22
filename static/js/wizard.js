@@ -428,7 +428,7 @@ function generateReviewSummary() {
     `;
 }
 
-// Form Submission
+// Form Submission with Sync Manager Integration
 function handleFormSubmission(event) {
     event.preventDefault();
     
@@ -438,35 +438,59 @@ function handleFormSubmission(event) {
     // Gather all form data
     const formData = gatherAllFormData();
     
-    // Submit to server
-    fetch('/wizard/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSubmissionSuccess(data);
-        } else {
-            throw new Error(data.error || 'Submission failed');
-        }
-    })
-    .catch(error => {
-        console.error('Submission error:', error);
+    // Try online submission first, fallback to sync manager
+    if (navigator.onLine) {
+        fetch('/wizard/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSubmissionSuccess(data);
+            } else {
+                throw new Error(data.error || 'Submission failed');
+            }
+        })
+        .catch(error => {
+            console.error('Online submission failed, using sync manager:', error);
+            handleOfflineSubmission(formData);
+        });
+    } else {
+        // Direct offline submission
+        handleOfflineSubmission(formData);
+    }
+}
+
+function handleOfflineSubmission(formData) {
+    // Use sync manager if available
+    if (window.VesselSyncHelper) {
+        const syncId = window.VesselSyncHelper.syncVesselCreation(formData);
         
-        if (navigator.onLine) {
-            showAlert('Submission failed: ' + error.message, 'error');
-        } else {
-            // Save for later sync when online
-            saveForOfflineSubmission(formData);
-            showAlert('Saved offline. Will submit when connection returns.', 'info');
+        if (syncId) {
+            // Show offline success
+            document.getElementById('submissionModal').classList.add('hidden');
+            showAlert('Vessel saved offline. Will sync when online.', 'success');
+            
+            // Clear saved wizard data
+            localStorage.removeItem('vesselWizardData');
+            
+            // Redirect to dashboard
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 1500);
+            
+            return;
         }
-        
-        document.getElementById('submissionModal').classList.add('hidden');
-    });
+    }
+    
+    // Fallback to old offline method
+    saveForOfflineSubmission(formData);
+    showAlert('Saved offline. Will submit when connection returns.', 'info');
+    document.getElementById('submissionModal').classList.add('hidden');
 }
 
 function gatherAllFormData() {

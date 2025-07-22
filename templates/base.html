@@ -56,8 +56,8 @@
             transform: translateY(0);
         }
         
-        /* Sync status indicator */
-        .sync-status {
+        /* Sync indicator styles */
+        .sync-indicator {
             position: fixed;
             top: 1rem;
             right: 1rem;
@@ -65,21 +65,92 @@
             border-radius: 0.5rem;
             font-size: 0.875rem;
             z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
         
-        .sync-status.synced {
+        .sync-indicator:hover {
+            transform: scale(1.05);
+        }
+        
+        .sync-indicator.synced {
             background: #10b981;
             color: white;
         }
         
-        .sync-status.syncing {
+        .sync-indicator.syncing {
             background: #f59e0b;
             color: white;
         }
         
-        .sync-status.offline {
+        .sync-indicator.pending {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .sync-indicator.conflict {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .sync-indicator.error {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .sync-indicator.offline {
             background: #6b7280;
             color: white;
+        }
+        
+        .sync-count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
+        /* Conflict notification */
+        .conflict-notification {
+            position: fixed;
+            top: 4rem;
+            right: 1rem;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            max-width: 320px;
+            z-index: 1000;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .conflict-content {
+            color: #991b1b;
+        }
+        
+        .conflict-content strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .conflict-content button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .conflict-content button:hover {
+            background: #dc2626;
         }
         
         /* Loading states for offline operations */
@@ -109,7 +180,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-50 min-h-screen{% if current_user.is_authenticated %} authenticated{% endif %}"{% if current_user.is_authenticated %} data-user-id="{{ current_user.id }}"{% endif %}>
     <!-- Offline Indicator -->
     <div id="offline-indicator" class="offline-indicator">
         <i class="fas fa-wifi-slash"></i>
@@ -253,6 +324,11 @@
         // Initialize connection status
         updateConnectionStatus();
     </script>
+    
+    <!-- Sync Manager (for authenticated users) -->
+    {% if current_user.is_authenticated %}
+    <script src="/static/js/sync-manager.js"></script>
+    {% endif %}
     
     {% block extra_js %}{% endblock %}
 </body>

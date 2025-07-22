@@ -252,12 +252,15 @@ def internal_error(error):
 from routes.auth import auth_bp
 from routes.wizard import wizard_bp
 from routes.document_processing import document_bp
+from routes.sync_routes import sync_bp
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(wizard_bp, url_prefix='/wizard')
 app.register_blueprint(document_bp, url_prefix='/document')
+app.register_blueprint(sync_bp, url_prefix='/sync')
 
-# Exempt document processing routes from CSRF for offline functionality
+# Exempt document processing and sync routes from CSRF for offline functionality
 csrf.exempt(document_bp)
+csrf.exempt(sync_bp)
 
 # Database initialization
 def init_database():
