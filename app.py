@@ -237,13 +237,49 @@ def api_vessel_cargo_tally(vessel_id):
         return jsonify({'error': 'Failed to process cargo tally'}), 500
 
 # Vessel details page route
-@app.route('/vessel/<int:vessel_id>')
+@app.route('/vessel/<vessel_id>')
 @login_required
 def vessel_details(vessel_id):
     """Individual vessel details page with cargo tally widgets"""
     try:
-        vessel = Vessel.query.get_or_404(vessel_id)
-        recent_tallies = CargoTally.query.filter_by(vessel_id=vessel_id).order_by(CargoTally.timestamp.desc()).limit(5).all()
+        # Check if it's an offline vessel ID
+        if str(vessel_id).startswith('offline_'):
+            # Handle offline vessel
+            from utils.offline_data_manager import OfflineDataManager
+            offline_manager = OfflineDataManager()
+            offline_vessels = offline_manager.get_offline_vessels()
+            
+            vessel_data = next((v for v in offline_vessels if v.get('offline_id') == vessel_id), None)
+            if not vessel_data:
+                flash('Offline vessel not found', 'error')
+                return redirect(url_for('dashboard'))
+            
+            # Create a vessel-like object for template compatibility
+            class OfflineVessel:
+                def __init__(self, data):
+                    self.id = data.get('offline_id')
+                    self.name = data.get('name', 'Unknown Vessel')
+                    self.vessel_type = data.get('vessel_type', 'Unknown')
+                    self.port_of_call = data.get('port_of_call', '')
+                    self.status = data.get('status', 'expected')
+                    self.progress_percentage = data.get('progress_percentage', 0)
+                    self.total_cargo_capacity = data.get('total_cargo_capacity', 0)
+                    self.heavy_equipment_count = data.get('heavy_equipment_count', 0)
+                    self.drivers_assigned = data.get('drivers_assigned', 0)
+                    self.tico_vehicles_needed = data.get('tico_vehicles_needed', 0)
+                    self.eta = data.get('eta')
+                    self.etd = data.get('etd')
+                
+                def get_cargo_loaded(self):
+                    return int(self.total_cargo_capacity * (self.progress_percentage / 100))
+            
+            vessel = OfflineVessel(vessel_data)
+            recent_tallies = []  # Offline tallies will be loaded by the widget
+            
+        else:
+            # Handle regular vessel
+            vessel = Vessel.query.get_or_404(int(vessel_id))
+            recent_tallies = CargoTally.query.filter_by(vessel_id=int(vessel_id)).order_by(CargoTally.timestamp.desc()).limit(5).all()
         
         return render_template('vessel_details.html', 
                              vessel=vessel, 

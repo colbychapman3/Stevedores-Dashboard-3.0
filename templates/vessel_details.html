@@ -2,6 +2,11 @@
 
 {% block title %}{{ vessel.name }} - Vessel Details{% endblock %}
 
+{% block extra_js %}
+<script src="/static/js/cargo-tally-widgets.js"></script>
+<script src="/static/js/sync-manager.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-8">
     <!-- Vessel Header -->
@@ -74,79 +79,15 @@
         </div>
     </div>
 
-    <!-- Progress and Cargo Tally Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Cargo Tally Widget -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                    <i class="fas fa-calculator text-blue-600 mr-2"></i>Cargo Tally
-                </h2>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label for="cargoInput" class="block text-sm font-medium text-gray-700 mb-2">Enter Cargo Count</label>
-                        <div class="flex space-x-2">
-                            <input type="number" id="cargoInput" min="1" 
-                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Number of cars loaded">
-                            <button onclick="addCargoTally()" 
-                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200">
-                                Add
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="pt-4 border-t">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-600">Progress</span>
-                            <span class="text-sm font-semibold">{{ vessel.get_cargo_loaded() }} / {{ vessel.total_cargo_capacity }}</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-3">
-                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                                 style="width: {{ vessel.progress_percentage }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Tallies -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-xl font-semibold text-gray-900 mb-4">
-                    <i class="fas fa-list text-green-600 mr-2"></i>Recent Cargo Tallies
-                </h2>
-                
-                <div class="space-y-3" id="tallyList">
-                    {% if cargo_tallies %}
-                        {% for tally in cargo_tallies %}
-                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-plus-circle text-green-500 mr-2"></i>
-                                <span class="font-semibold">{{ tally.cargo_count }}</span>
-                                <span class="text-gray-600 ml-2">cars {{ tally.tally_type }}</span>
-                                {% if tally.location %}
-                                    <span class="text-sm text-gray-500 ml-2">({{ tally.location }})</span>
-                                {% endif %}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ tally.timestamp.strftime('%H:%M') }}
-                                {% if not tally.synced %}
-                                    <i class="fas fa-clock text-yellow-500 ml-2" title="Pending sync"></i>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-8 text-gray-500">
-                            <i class="fas fa-inbox text-3xl mb-4"></i>
-                            <p>No cargo tallies recorded yet</p>
-                            <p class="text-sm">Add your first tally using the widget above</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+    <!-- Cargo Tally Widget System -->
+    <div class="mb-8">
+        <div id="cargo-tally-widget-container" 
+             data-cargo-tally-widget 
+             data-vessel-id="{{ vessel.id }}" 
+             data-auto-refresh="true" 
+             data-allow-input="true" 
+             data-show-history="true">
+            <!-- Cargo tally widget will be initialized here -->
         </div>
     </div>
 
@@ -162,120 +103,22 @@
 </div>
 
 <script>
-// Cargo tally functionality
-function addCargoTally() {
-    const input = document.getElementById('cargoInput');
-    const count = parseInt(input.value);
+// Vessel details page initialization
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚢 Initializing vessel details page for {{ vessel.name }}');
     
-    if (!count || count <= 0) {
-        alert('Please enter a valid cargo count');
-        return;
-    }
-    
-    // Add tally via API
-    fetch(`/api/vessels/{{ vessel.id }}/cargo-tally`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            cargo_count: count,
-            tally_type: 'loaded',
-            location: 'deck_1', // Could be made configurable
-            timestamp: new Date().toISOString()
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update UI
-            addTallyToList(count, 'loaded', new Date());
-            updateProgress(data.new_progress);
-            input.value = '';
-        } else {
-            throw new Error(data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Tally error:', error);
-        
-        if (navigator.onLine) {
-            alert('Failed to add tally: ' + error.message);
-        } else {
-            // Save offline and show in UI
-            saveTallyOffline(count);
-            addTallyToList(count, 'loaded', new Date(), false);
-            input.value = '';
-            showOfflineMessage();
-        }
-    });
-}
-
-function addTallyToList(count, type, timestamp, synced = true) {
-    const tallyList = document.getElementById('tallyList');
-    const timeStr = timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    const tallyElement = document.createElement('div');
-    tallyElement.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
-    tallyElement.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas fa-plus-circle text-green-500 mr-2"></i>
-            <span class="font-semibold">${count}</span>
-            <span class="text-gray-600 ml-2">cars ${type}</span>
-        </div>
-        <div class="text-sm text-gray-500">
-            ${timeStr}
-            ${!synced ? '<i class="fas fa-clock text-yellow-500 ml-2" title="Pending sync"></i>' : ''}
-        </div>
-    `;
-    
-    tallyList.insertBefore(tallyElement, tallyList.firstChild);
-}
-
-function updateProgress(newProgress) {
-    const progressBar = document.querySelector('.bg-blue-600');
-    if (progressBar) {
-        progressBar.style.width = newProgress + '%';
-    }
-}
-
-function saveTallyOffline(count) {
-    const offlineTallies = JSON.parse(localStorage.getItem('offlineCargoTallies') || '[]');
-    offlineTallies.push({
-        vessel_id: {{ vessel.id }},
-        cargo_count: count,
-        tally_type: 'loaded',
-        timestamp: new Date().toISOString(),
-        synced: false
-    });
-    localStorage.setItem('offlineCargoTallies', JSON.stringify(offlineTallies));
-}
-
-function showOfflineMessage() {
-    const message = document.createElement('div');
-    message.className = 'fixed top-20 right-4 bg-yellow-100 border border-yellow-300 rounded-lg p-4 max-w-sm z-50';
-    message.innerHTML = `
-        <div class="flex items-center">
-            <i class="fas fa-wifi-slash text-yellow-600 mr-2"></i>
-            <span class="text-yellow-800">Tally saved offline. Will sync when connection returns.</span>
-        </div>
-    `;
-    document.body.appendChild(message);
-    
-    setTimeout(() => {
-        message.remove();
-    }, 5000);
-}
+    // The cargo tally widget is automatically initialized via data attributes
+    // Additional vessel-specific functionality can be added here
+});
 
 function exportData() {
-    // Simple data export functionality
+    // Enhanced data export functionality
     const vesselData = {
         name: '{{ vessel.name }}',
         type: '{{ vessel.vessel_type }}',
         status: '{{ vessel.status }}',
         progress: {{ vessel.progress_percentage }},
         capacity: {{ vessel.total_cargo_capacity }},
-        loaded: {{ vessel.get_cargo_loaded() }},
         timestamp: new Date().toISOString()
     };
     
@@ -288,15 +131,6 @@ function exportData() {
     link.click();
 }
 
-// Auto-sync offline tallies when connection returns
-window.addEventListener('online', () => {
-    const offlineTallies = JSON.parse(localStorage.getItem('offlineCargoTallies') || '[]');
-    const vesselTallies = offlineTallies.filter(t => t.vessel_id === {{ vessel.id }});
-    
-    if (vesselTallies.length > 0) {
-        console.log('Syncing offline cargo tallies...');
-        // Implementation would sync each tally to server
-    }
-});
+console.log('✅ Vessel details page loaded with cargo tally widget system');
 </script>
 {% endblock %}
