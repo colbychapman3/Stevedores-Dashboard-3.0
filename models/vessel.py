@@ -49,6 +49,12 @@ def create_vessel_model(db):
         document_source = db.Column(db.String(100), nullable=True)  # filename of auto-fill document
         wizard_completed = db.Column(db.Boolean, default=False)
         
+        # Wizard step data storage (JSON fields)
+        step_1_data = db.Column(db.Text, nullable=True)  # Basic vessel info
+        step_2_data = db.Column(db.Text, nullable=True)  # Cargo configuration
+        step_3_data = db.Column(db.Text, nullable=True)  # Operational parameters
+        step_4_data = db.Column(db.Text, nullable=True)  # Final review & notes
+        
         def __repr__(self):
             return f'<Vessel {self.name} ({self.status})>'
         

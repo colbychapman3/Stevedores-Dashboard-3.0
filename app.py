@@ -37,6 +37,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
+
+# Exempt API routes from CSRF protection for offline functionality
+@csrf.exempt
+def csrf_exempt_api(func):
+    """Decorator to exempt API routes from CSRF"""
+    return func
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Please log in to access this page.'
 
@@ -73,6 +79,7 @@ def dashboard():
     """Main stevedoring dashboard"""
     vessels = Vessel.query.all()
     return render_template('dashboard.html', vessels=vessels)
+
 
 # PWA routes
 @app.route('/manifest.json')
@@ -136,6 +143,100 @@ def health_check():
         'offline_ready': True
     }), 200
 
+# API Routes
+@app.route('/api/vessels/summary')
+def api_vessels_summary():
+    """Get vessel summary for dashboard"""
+    try:
+        vessels = Vessel.query.all()
+        summary = {
+            'total_vessels': len(vessels),
+            'active_vessels': len([v for v in vessels if v.status in ['arrived', 'berthed', 'operations_active']]),
+            'vessels': [v.to_dict() for v in vessels],
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        return jsonify(summary)
+    except Exception as e:
+        logger.error(f"API vessel summary error: {e}")
+        return jsonify({'error': 'Failed to fetch vessel summary'}), 500
+
+@app.route('/api/vessels/<int:vessel_id>')
+def api_vessel_details(vessel_id):
+    """Get individual vessel details"""
+    try:
+        vessel = Vessel.query.get_or_404(vessel_id)
+        return jsonify(vessel.to_dict())
+    except Exception as e:
+        logger.error(f"API vessel details error: {e}")
+        return jsonify({'error': 'Failed to fetch vessel details'}), 500
+
+@app.route('/api/vessels/<int:vessel_id>/cargo-tally', methods=['GET', 'POST'])
+@csrf.exempt
+def api_vessel_cargo_tally(vessel_id):
+    """Handle cargo tally for specific vessel"""
+    try:
+        vessel = Vessel.query.get_or_404(vessel_id)
+        
+        if request.method == 'GET':
+            # Return recent tallies
+            tallies = CargoTally.query.filter_by(vessel_id=vessel_id).order_by(CargoTally.timestamp.desc()).limit(10).all()
+            return jsonify({
+                'vessel_id': vessel_id,
+                'vessel_name': vessel.name,
+                'recent_tallies': [tally.to_dict() for tally in tallies],
+                'total_loaded': sum([t.cargo_count for t in CargoTally.query.filter_by(vessel_id=vessel_id, tally_type='loaded').all()]),
+                'progress': vessel.progress_percentage
+            })
+        
+        elif request.method == 'POST':
+            # Add new tally entry
+            data = request.get_json()
+            
+            tally = CargoTally(
+                vessel_id=vessel_id,
+                tally_type=data.get('tally_type', 'loaded'),
+                cargo_count=int(data.get('cargo_count', 1)),
+                location=data.get('location', ''),
+                notes=data.get('notes', ''),
+                shift_period=data.get('shift_period', 'morning')
+            )
+            
+            db.session.add(tally)
+            db.session.commit()
+            
+            # Update vessel progress
+            total_loaded = sum([t.cargo_count for t in CargoTally.query.filter_by(vessel_id=vessel_id, tally_type='loaded').all()])
+            progress = (total_loaded / vessel.total_cargo_capacity) * 100 if vessel.total_cargo_capacity > 0 else 0
+            vessel.update_progress(progress)
+            
+            return jsonify({
+                'success': True,
+                'tally_id': tally.id,
+                'new_progress': vessel.progress_percentage,
+                'total_loaded': total_loaded
+            }), 201
+            
+    except Exception as e:
+        logger.error(f"API cargo tally error: {e}")
+        return jsonify({'error': 'Failed to process cargo tally'}), 500
+
+# Vessel details page route
+@app.route('/vessel/<int:vessel_id>')
+@login_required
+def vessel_details(vessel_id):
+    """Individual vessel details page with cargo tally widgets"""
+    try:
+        vessel = Vessel.query.get_or_404(vessel_id)
+        recent_tallies = CargoTally.query.filter_by(vessel_id=vessel_id).order_by(CargoTally.timestamp.desc()).limit(5).all()
+        
+        return render_template('vessel_details.html', 
+                             vessel=vessel, 
+                             recent_tallies=recent_tallies)
+    except Exception as e:
+        logger.error(f"Vessel details error: {e}")
+        flash('Error loading vessel details', 'error')
+        return redirect(url_for('dashboard'))
+
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
@@ -149,7 +250,9 @@ def internal_error(error):
 
 # Register blueprints
 from routes.auth import auth_bp
+from routes.wizard import wizard_bp
 app.register_blueprint(auth_bp, url_prefix='/auth')
+app.register_blueprint(wizard_bp, url_prefix='/wizard')
 
 # Database initialization
 def init_database():

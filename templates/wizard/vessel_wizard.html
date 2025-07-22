@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Vessel Operations Wizard - Stevedores Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .step-indicator {
+        transition: all 0.3s ease;
+    }
+    .step-active {
+        background: linear-gradient(135deg, #3B82F6, #1E40AF);
+        transform: scale(1.1);
+    }
+    .step-completed {
+        background: linear-gradient(135deg, #10B981, #059669);
+    }
+    .wizard-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: calc(100vh - 64px);
+    }
+    .wizard-card {
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .upload-zone {
+        border: 2px dashed #cbd5e0;
+        transition: all 0.3s ease;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: #4299e1;
+        background-color: #ebf8ff;
+    }
+    .validation-error {
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+    }
+    @media (max-width: 768px) {
+        .wizard-container {
+            padding: 1rem;
+        }
+        .step-indicator {
+            font-size: 0.875rem;
+            padding: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-2xl lg:text-4xl font-bold text-white mb-4">
+                <i class="fas fa-ship mr-3"></i>Vessel Operations Wizard
+            </h1>
+            <p class="text-lg text-blue-100">Create and configure your vessel operation in 4 simple steps</p>
+        </div>
+
+        <!-- Step Indicators -->
+        <div class="flex justify-center mb-8">
+            <div class="flex space-x-4 bg-white/10 rounded-full p-2">
+                <div id="step1-indicator" class="step-indicator step-active px-4 py-2 rounded-full text-white font-semibold">
+                    <i class="fas fa-ship mr-2"></i>1. Vessel Info
+                </div>
+                <div id="step2-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
+                    <i class="fas fa-boxes mr-2"></i>2. Cargo Config
+                </div>
+                <div id="step3-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
+                    <i class="fas fa-users mr-2"></i>3. Operations
+                </div>
+                <div id="step4-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
+                    <i class="fas fa-check mr-2"></i>4. Review
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Upload Section -->
+        <div class="wizard-card rounded-xl shadow-lg p-6 mb-8 max-w-4xl mx-auto">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">
+                <i class="fas fa-cloud-upload-alt text-blue-600 mr-3"></i>Upload Maritime Documents (Optional)
+            </h2>
+            <p class="text-gray-600 mb-4">Upload vessel operation documents to automatically populate form fields</p>
+            
+            <div class="upload-zone rounded-lg p-8 text-center" onclick="document.getElementById('documentUpload').click()">
+                <i class="fas fa-file-upload text-3xl text-blue-500 mb-4"></i>
+                <p class="text-gray-700 mb-2"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                <p class="text-sm text-gray-500">PDF, CSV, or TXT files (Max 16MB)</p>
+                <input id="documentUpload" type="file" class="hidden" accept=".pdf,.csv,.txt" onchange="handleDocumentUpload(event)">
+            </div>
+            
+            <div id="uploadStatus" class="mt-4 hidden">
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-3"></div>
+                    <span class="text-blue-600">Processing document...</span>
+                </div>
+            </div>
+            
+            <div id="uploadSuccess" class="mt-4 hidden bg-green-100 border border-green-300 rounded p-4">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                    <span class="text-green-800">Document processed successfully! Form fields have been populated.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wizard Form -->
+        <form id="vesselWizardForm" class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
+            <!-- Step 1: Vessel Information -->
+            <div id="step1" class="wizard-step">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-ship text-blue-600 mr-3"></i>Step 1: Vessel Information
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="vesselName" class="block text-sm font-medium text-gray-700 mb-2">Vessel Name *</label>
+                        <input type="text" id="vesselName" name="vesselName" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Enter vessel name">
+                    </div>
+                    
+                    <div>
+                        <label for="vesselType" class="block text-sm font-medium text-gray-700 mb-2">Vessel Type *</label>
+                        <select id="vesselType" name="vesselType" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select vessel type</option>
+                            <option value="Car Carrier">Car Carrier</option>
+                            <option value="RoRo">RoRo (Roll-on/Roll-off)</option>
+                            <option value="Container Ship">Container Ship</option>
+                            <option value="Bulk Carrier">Bulk Carrier</option>
+                            <option value="General Cargo">General Cargo</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="port" class="block text-sm font-medium text-gray-700 mb-2">Port of Call *</label>
+                        <select id="port" name="port" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select port</option>
+                            <option value="Port Newark">Port Newark</option>
+                            <option value="Port Elizabeth">Port Elizabeth</option>
+                            <option value="Port of Baltimore">Port of Baltimore</option>
+                            <option value="Port of Savannah">Port of Savannah</option>
+                            <option value="Port of Charleston">Port of Charleston</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="operationDate" class="block text-sm font-medium text-gray-700 mb-2">Operation Date *</label>
+                        <input type="date" id="operationDate" name="operationDate" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-8">
+                    <button type="button" onclick="nextStep(1)" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                        Next Step <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Cargo Configuration -->
+            <div id="step2" class="wizard-step hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-boxes text-blue-600 mr-3"></i>Step 2: Cargo Configuration
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="totalAutomobiles" class="block text-sm font-medium text-gray-700 mb-2">Total Automobiles</label>
+                        <input type="number" id="totalAutomobiles" name="totalAutomobiles" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Enter total vehicle count">
+                    </div>
+                    
+                    <div>
+                        <label for="heavyEquipment" class="block text-sm font-medium text-gray-700 mb-2">Heavy Equipment</label>
+                        <input type="number" id="heavyEquipment" name="heavyEquipment" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Trucks, machinery, etc.">
+                    </div>
+                    
+                    <div>
+                        <label for="cargoType" class="block text-sm font-medium text-gray-700 mb-2">Primary Cargo Type</label>
+                        <select id="cargoType" name="cargoType"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="automobile">Automobiles</option>
+                            <option value="mixed">Mixed Cargo</option>
+                            <option value="heavy_equipment">Heavy Equipment</option>
+                            <option value="containers">Containers</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="prevStep(2)" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                    </button>
+                    <button type="button" onclick="nextStep(2)" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                        Next Step <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Operational Parameters -->
+            <div id="step3" class="wizard-step hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-users text-blue-600 mr-3"></i>Step 3: Operational Parameters
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="shiftStart" class="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
+                        <input type="time" id="shiftStart" name="shiftStart"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="shiftEnd" class="block text-sm font-medium text-gray-700 mb-2">Shift End Time</label>
+                        <input type="time" id="shiftEnd" name="shiftEnd"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="driversAssigned" class="block text-sm font-medium text-gray-700 mb-2">Drivers Assigned</label>
+                        <input type="number" id="driversAssigned" name="driversAssigned" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Number of drivers">
+                    </div>
+                    
+                    <div>
+                        <label for="ticoVehicles" class="block text-sm font-medium text-gray-700 mb-2">TICO Vehicles Needed</label>
+                        <input type="number" id="ticoVehicles" name="ticoVehicles" min="0"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                               placeholder="Vans/station wagons for transport">
+                    </div>
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="prevStep(3)" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                    </button>
+                    <button type="button" onclick="nextStep(3)" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                        Review <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Review and Submit -->
+            <div id="step4" class="wizard-step hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-check text-blue-600 mr-3"></i>Step 4: Review & Submit
+                </h2>
+                
+                <div id="reviewSummary" class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <!-- Summary will be populated by JavaScript -->
+                </div>
+                
+                <div class="flex justify-between">
+                    <button type="button" onclick="prevStep(4)" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                    </button>
+                    <button type="submit" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg transition duration-200">
+                        <i class="fas fa-rocket mr-2"></i> Create Vessel Operation
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Loading/Success Modals -->
+<div id="submissionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+        <div id="submissionLoading" class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Creating Vessel Operation...</h3>
+            <p class="text-gray-600">Please wait while we process your data.</p>
+        </div>
+        
+        <div id="submissionSuccess" class="text-center hidden">
+            <i class="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Success!</h3>
+            <p class="text-gray-600 mb-6">Vessel operation created successfully.</p>
+            <button onclick="closeModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                Continue to Dashboard
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/wizard.js"></script>
+{% endblock %}
