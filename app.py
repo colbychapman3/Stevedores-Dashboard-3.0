@@ -308,6 +308,46 @@ def health_check():
         'offline_ready': True
     }), 200
 
+# Demo user creation endpoint for testing
+@app.route('/create-demo-user')
+def create_demo_user():
+    """Create demo user for testing login functionality"""
+    try:
+        # Check if demo user already exists
+        existing_user = User.query.filter_by(email='demo@maritime.test').first()
+        if existing_user:
+            return jsonify({
+                'message': 'Demo user already exists',
+                'email': 'demo@maritime.test',
+                'password': 'demo123'
+            })
+        
+        # Create demo user
+        demo_user = User(
+            email='demo@maritime.test',
+            username='demo_user',
+            password_hash=generate_password_hash('demo123'),
+            first_name='Demo',
+            last_name='User',
+            role='operator',
+            company='Maritime Demo Corp',
+            is_active=True
+        )
+        
+        db.session.add(demo_user)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Demo user created successfully',
+            'email': 'demo@maritime.test',
+            'password': 'demo123'
+        })
+        
+    except Exception as e:
+        logger.error(f"Demo user creation error: {e}")
+        return jsonify({'error': f'Failed to create demo user: {str(e)}'}), 500
+
 # API Routes
 @app.route('/api/vessels/summary')
 def api_vessels_summary():
