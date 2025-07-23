@@ -2,7 +2,7 @@
 // Critical for maritime operations where connectivity is unreliable
 // Enhanced with background sync, smart caching, and offline-first strategies
 
-const VERSION = '3.0.1';
+const VERSION = '3.0.2';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
