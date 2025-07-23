@@ -1,19 +1,19 @@
-# Flask Core - Render deployment optimized
-Flask==2.3.3
-Flask-SQLAlchemy==2.5.1
+# Flask Core - Python 3.13 compatible versions
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
-Flask-WTF==1.1.1
+Flask-WTF==1.2.1
 
 # Database - Supabase PostgreSQL
-SQLAlchemy==1.4.53
+SQLAlchemy==2.0.23
 psycopg2-binary==2.9.9
 
 # Caching - Upstash Redis
-redis==4.6.0
+redis==5.0.1
 
 # Security
-Werkzeug==2.3.7
-WTForms==3.0.1
+Werkzeug==3.0.1
+WTForms==3.1.1
 
 # Utilities
 python-dotenv==1.0.0
