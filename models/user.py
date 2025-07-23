@@ -1,6 +1,6 @@
 """
 User model for stevedoring operations
-Simple authentication and role management
+Simple authentication system
 """
 
 from datetime import datetime

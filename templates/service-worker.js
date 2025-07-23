@@ -2,7 +2,7 @@
 // Critical for maritime operations where connectivity is unreliable
 // Enhanced with background sync, smart caching, and offline-first strategies
 
-const VERSION = '3.0.2';
+const VERSION = '3.0.3';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
@@ -204,7 +204,7 @@ async function networkFirstStrategy(request, cache, options = {}) {
     try {
         // Race network request against timeout
         const networkResponse = await Promise.race([
-            fetch(request),
+            fetch(request, { redirect: 'follow' }),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Network timeout')), timeout)
             )
@@ -536,7 +536,7 @@ async function syncCargoTallies() {
     
     try {
         // Get pending tallies from sync queue
-        const response = await fetch('/sync/pending-cargo-tallies');
+        const response = await fetch('/sync/pending-cargo-tallies', { redirect: 'follow' });
         
         if (!response.ok) {
             throw new Error(`Failed to get pending tallies: ${response.status}`);
@@ -563,7 +563,8 @@ async function syncCargoTallies() {
                 const batchResponse = await fetch('/sync/cargo-tallies-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tallies: batch })
+                    body: JSON.stringify({ tallies: batch }),
+                    redirect: 'follow'
                 });
                 
                 if (batchResponse.ok) {
@@ -605,7 +606,8 @@ async function syncVesselData() {
     try {
         const response = await fetch('/sync/vessel-updates', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow'
         });
         
         if (response.ok) {
@@ -633,7 +635,8 @@ async function syncDocuments() {
     
     try {
         const response = await fetch('/sync/pending-documents', {
-            method: 'POST'
+            method: 'POST',
+            redirect: 'follow'
         });
         
         if (response.ok) {
@@ -652,7 +655,8 @@ async function syncWizardData() {
     
     try {
         const response = await fetch('/sync/offline-vessels', {
-            method: 'POST'
+            method: 'POST',
+            redirect: 'follow'
         });
         
         if (response.ok) {
@@ -868,7 +872,8 @@ async function syncCriticalVesselData() {
     try {
         const response = await fetch('/sync/critical-vessels', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' },
+            redirect: 'follow'
         });
         
         if (response.ok) {
@@ -890,7 +895,8 @@ async function syncCriticalVesselData() {
 async function syncUrgentCargoTallies() {
     try {
         const response = await fetch('/sync/urgent-tallies', {
-            method: 'POST'
+            method: 'POST',
+            redirect: 'follow'
         });
         
         if (response.ok) {

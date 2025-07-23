@@ -187,7 +187,7 @@ class CargoTallyWidget {
         
         try {
             const url = `/offline-dashboard/vessel/${this.vesselId}/data`;
-            const response = await fetch(url);
+            const response = await fetch(url, { redirect: 'follow' });
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -265,7 +265,8 @@ class CargoTallyWidget {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(tallyData)
+                    body: JSON.stringify(tallyData),
+                    redirect: 'follow'
                 });
                 
                 if (response.ok) {

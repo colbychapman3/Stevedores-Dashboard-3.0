@@ -186,7 +186,7 @@ class ClientSyncManager {
     
     async getSyncStatus() {
         try {
-            const response = await fetch('/sync/status');
+            const response = await fetch('/sync/status', { redirect: 'follow' });
             if (response.ok) {
                 return await response.json();
             }
@@ -198,7 +198,7 @@ class ClientSyncManager {
     
     async getConflicts() {
         try {
-            const response = await fetch('/sync/conflicts');
+            const response = await fetch('/sync/conflicts', { redirect: 'follow' });
             if (response.ok) {
                 const result = await response.json();
                 return result.conflicts || [];

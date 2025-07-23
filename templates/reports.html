@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Analytics - Stevedores Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-chart-line text-3xl text-blue-600 mr-4"></i>
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+                    <p class="text-gray-600 mt-1">Comprehensive maritime operations reporting and insights</p>
+                </div>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Coming Soon Notice -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-8 mb-8">
+        <div class="text-center">
+            <i class="fas fa-compass text-6xl text-blue-600 mb-4"></i>
+            <h2 class="text-2xl font-bold text-blue-900 mb-4">Advanced Maritime Analytics Platform</h2>
+            <p class="text-blue-700 text-lg mb-6">
+                Our comprehensive reporting and analytics system is currently under development.
+                This powerful platform will provide deep insights into your stevedoring operations with advanced visualization tools.
+            </p>
+            
+            <!-- Feature Preview Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-blue-100 feature-card">
+                    <i class="fas fa-chart-bar text-2xl text-blue-600 mb-3"></i>
+                    <h3 class="font-semibold text-gray-900 mb-2">Performance Metrics</h3>
+                    <p class="text-gray-600 text-sm">Track vessel turnaround times, cargo handling efficiency, and operational KPIs.</p>
+                </div>
+                
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-blue-100 feature-card">
+                    <i class="fas fa-calendar-alt text-2xl text-blue-600 mb-3"></i>
+                    <h3 class="font-semibold text-gray-900 mb-2">Historical Analysis</h3>
+                    <p class="text-gray-600 text-sm">Analyze trends and patterns across different time periods and seasons.</p>
+                </div>
+                
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-blue-100 feature-card">
+                    <i class="fas fa-download text-2xl text-blue-600 mb-3"></i>
+                    <h3 class="font-semibold text-gray-900 mb-2">Export Capabilities</h3>
+                    <p class="text-gray-600 text-sm">Export reports in PDF, Excel, and CSV formats for stakeholder distribution.</p>
+                </div>
+                
+                <div class="bg-white rounded-lg p-6 shadow-sm border border-blue-100 feature-card">
+                    <i class="fas fa-users text-2xl text-blue-600 mb-3"></i>
+                    <h3 class="font-semibold text-gray-900 mb-2">Team Analytics</h3>
+                    <p class="text-gray-600 text-sm">Monitor crew performance, shift productivity, and resource utilization.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Categories Preview -->
+    <div class="grid md:grid-cols-2 gap-8 mb-8">
+        <!-- Operational Reports -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-cogs text-2xl text-blue-600 mr-3"></i>
+                <h3 class="text-xl font-semibold text-gray-900">Operational Reports</h3>
+            </div>
+            <ul class="space-y-3 text-gray-700">
+                <li class="flex items-center">
+                    <i class="fas fa-ship text-blue-600 mr-3"></i>
+                    Vessel Operation Summary
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-clock text-blue-600 mr-3"></i>
+                    Turnaround Time Analysis
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-boxes text-blue-600 mr-3"></i>
+                    Cargo Handling Statistics
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-exclamation-triangle text-blue-600 mr-3"></i>
+                    Incident and Delay Reports
+                </li>
+            </ul>
+        </div>
+
+        <!-- Financial Reports -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-dollar-sign text-2xl text-blue-600 mr-3"></i>
+                <h3 class="text-xl font-semibold text-gray-900">Financial Reports</h3>
+            </div>
+            <ul class="space-y-3 text-gray-700">
+                <li class="flex items-center">
+                    <i class="fas fa-calculator text-blue-600 mr-3"></i>
+                    Revenue by Vessel Type
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-chart-pie text-blue-600 mr-3"></i>
+                    Cost Center Analysis
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-trending-up text-blue-600 mr-3"></i>
+                    Profitability Trends
+                </li>
+                <li class="flex items-center">
+                    <i class="fas fa-file-invoice text-blue-600 mr-3"></i>
+                    Billing and Invoicing Summary
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Maritime Operations Info -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div class="flex items-start">
+            <i class="fas fa-info-circle text-blue-600 text-xl mr-3 mt-1"></i>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Advanced Analytics Features</h3>
+                <p class="text-gray-700 mb-4">
+                    The reporting system will provide comprehensive insights tailored for maritime operations:
+                </p>
+                <div class="grid md:grid-cols-2 gap-4 text-gray-600">
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">Real-time Dashboards</h4>
+                        <ul class="space-y-1 text-sm">
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Live operational metrics</li>
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Interactive charts and graphs</li>
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Customizable KPI widgets</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900 mb-2">Predictive Analytics</h4>
+                        <ul class="space-y-1 text-sm">
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Vessel arrival predictions</li>
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Resource optimization</li>
+                            <li><i class="fas fa-dot-circle text-blue-600 mr-2"></i>Capacity planning insights</li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="text-gray-600 mt-4 text-sm">
+                    <i class="fas fa-clock text-blue-600 mr-1"></i>
+                    Expected release: Next system update
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-card {
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    @keyframes compass-spin {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(90deg); }
+        50% { transform: rotate(180deg); }
+        75% { transform: rotate(270deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .compass-animation {
+        animation: compass-spin 8s linear infinite;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add maritime-themed animations
+    document.addEventListener('DOMContentLoaded', function() {
+        const compass = document.querySelector('.fa-compass');
+        if (compass) {
+            // Add compass spinning animation on hover
+            compass.addEventListener('mouseenter', function() {
+                this.classList.add('compass-animation');
+            });
+            
+            compass.addEventListener('mouseleave', function() {
+                this.classList.remove('compass-animation');
+            });
+        }
+        
+        // Add subtle hover effects to feature cards
+        const featureCards = document.querySelectorAll('.feature-card');
+        featureCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.style.transform = 'scale(1.1)';
+                    icon.style.transition = 'transform 0.3s ease';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.style.transform = 'scale(1)';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

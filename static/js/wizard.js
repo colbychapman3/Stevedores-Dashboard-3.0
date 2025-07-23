@@ -267,7 +267,7 @@ function loadSavedWizardData() {
     
     // Also try to load from server if online
     if (navigator.onLine) {
-        fetch('/wizard/api/load-saved')
+        fetch('/wizard/api/load-saved', { redirect: 'follow' })
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.data) {
@@ -599,7 +599,7 @@ async function loadDocumentProcessor() {
 
 async function checkAutoFillData() {
     try {
-        const response = await fetch('/document/get-auto-fill');
+        const response = await fetch('/document/get-auto-fill', { redirect: 'follow' });
         const data = await response.json();
         
         if (data.has_data) {
@@ -675,7 +675,7 @@ async function applyAutoFill() {
     if (banner) banner.remove();
     
     // Clear server-side auto-fill data
-    await fetch('/document/clear-auto-fill', { method: 'POST' });
+    await fetch('/document/clear-auto-fill', { method: 'POST', redirect: 'follow' });
     
     showAlert('Form auto-filled successfully!', 'success');
 }
@@ -685,7 +685,7 @@ function dismissAutoFill() {
     if (banner) banner.remove();
     
     // Clear server-side auto-fill data
-    fetch('/document/clear-auto-fill', { method: 'POST' });
+    fetch('/document/clear-auto-fill', { method: 'POST', redirect: 'follow' });
 }
 
 function setupDocumentUpload() {

@@ -81,7 +81,6 @@ def index():
     return render_template('index.html')
 
 @app.route('/dashboard')
-@app.route('/')
 @login_required
 def dashboard():
     """Main stevedoring dashboard with offline support"""
@@ -103,6 +102,17 @@ def dashboard():
         # Fallback to offline-only template
         return render_template('dashboard_offline.html', vessels=[])
 
+@app.route('/cargo-tally')
+@login_required
+def cargo_tally():
+    """Cargo tally management page"""
+    return render_template('cargo_tally.html')
+
+@app.route('/reports')
+@login_required
+def reports():
+    """Reports and analytics page"""
+    return render_template('reports.html')
 
 # PWA routes
 @app.route('/manifest.json')
@@ -500,50 +510,7 @@ csrf.exempt(document_bp)
 csrf.exempt(sync_bp)
 csrf.exempt(offline_dashboard_bp)
 
-# Database initialization
-def init_database():
-    """Initialize database tables and create sample data if needed"""
-    try:
-        with app.app_context():
-            db.create_all()
-            
-            # Create default admin user if not exists
-            if not User.query.filter_by(email='admin@stevedores.com').first():
-                admin = User(
-                    email='admin@stevedores.com',
-                    username='admin',
-                    password_hash=generate_password_hash('admin123'),
-                    role='manager',
-                    is_active=True
-                )
-                db.session.add(admin)
-            
-            # Create default stevedore user
-            if not User.query.filter_by(email='stevedore@stevedores.com').first():
-                stevedore = User(
-                    email='stevedore@stevedores.com',
-                    username='stevedore',
-                    password_hash=generate_password_hash('stevedore123'),
-                    role='stevedore',
-                    is_active=True
-                )
-                db.session.add(stevedore)
-            
-            db.session.commit()
-            logger.info("Database initialized successfully!")
-            return True
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
-        return False
 
-# CLI commands
-@app.cli.command()
-def init_db():
-    """Initialize the database with tables and sample data"""
-    if init_database():
-        print("Database initialized successfully!")
-    else:
-        print("Database initialization failed!")
 
 if __name__ == '__main__':
     app.run(
