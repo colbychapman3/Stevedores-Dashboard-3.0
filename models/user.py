@@ -14,6 +14,7 @@ def create_user_model(db):
         """User model for stevedoring operations"""
         
         __tablename__ = 'users'
+        __table_args__ = {'extend_existing': True}
         
         id = db.Column(db.Integer, primary_key=True)
         email = db.Column(db.String(120), unique=True, nullable=False, index=True)
