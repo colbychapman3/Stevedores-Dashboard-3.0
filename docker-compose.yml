@@ -1,0 +1,178 @@
+# Docker Compose for Stevedores Dashboard 3.0 Production
+# Complete maritime operations stack with monitoring
+
+version: '3.8'
+
+services:
+  # Main application
+  stevedores-dashboard:
+    build: .
+    container_name: stevedores-dashboard-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - FLASK_ENV=production
+      - FLASK_CONFIG=production
+      - DATABASE_URL=postgresql://stevedores:${DB_PASSWORD}@postgres:5432/stevedores_dashboard
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN}
+    volumes:
+      - app_data:/home/stevedores/instance
+      - app_logs:/home/stevedores/logs
+      - nginx_logs:/var/log/nginx
+      - supervisor_logs:/var/log/supervisor
+      - uploads:/home/stevedores/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - stevedores-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: stevedores-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=stevedores_dashboard
+      - POSTGRES_USER=stevedores
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - stevedores-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stevedores -d stevedores_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: stevedores-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - stevedores-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Nginx load balancer (optional for scaling)
+  nginx-lb:
+    image: nginx:alpine
+    container_name: stevedores-nginx-lb
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - stevedores-dashboard
+    networks:
+      - stevedores-network
+    profiles:
+      - loadbalancer
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: stevedores-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - stevedores-network
+    profiles:
+      - monitoring
+
+  # Grafana for dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: stevedores-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - stevedores-network
+    profiles:
+      - monitoring
+
+  # Log aggregation with Fluentd (optional)
+  fluentd:
+    image: fluent/fluentd:latest
+    container_name: stevedores-fluentd
+    restart: unless-stopped
+    volumes:
+      - ./docker/fluentd.conf:/fluentd/etc/fluent.conf:ro
+      - app_logs:/logs/app:ro
+      - nginx_logs:/logs/nginx:ro
+    networks:
+      - stevedores-network
+    profiles:
+      - logging
+
+# Volumes for persistent data
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_data:
+    driver: local
+  app_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  supervisor_logs:
+    driver: local
+  uploads:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Networks
+networks:
+  stevedores-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
