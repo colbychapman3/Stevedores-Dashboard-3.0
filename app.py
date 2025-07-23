@@ -505,8 +505,9 @@ app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
 
-# Exempt document processing, sync, and offline dashboard routes from CSRF for offline functionality
+# Exempt document processing, sync, offline dashboard, and auth routes from CSRF for offline functionality
 csrf.exempt(document_bp)
+csrf.exempt(auth_bp)
 csrf.exempt(sync_bp)
 csrf.exempt(offline_dashboard_bp)
 

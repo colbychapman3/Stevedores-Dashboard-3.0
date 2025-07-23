@@ -5,7 +5,6 @@ Simple login/logout functionality
 
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_wtf.csrf import exempt
 from werkzeug.security import check_password_hash
 
 auth_bp = Blueprint('auth', __name__)
@@ -18,7 +17,6 @@ def get_db_and_models():
     return db, User
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@exempt
 def login():
     """User login endpoint"""
     if request.method == 'GET':
