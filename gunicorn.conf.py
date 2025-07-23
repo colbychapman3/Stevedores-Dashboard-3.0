@@ -12,7 +12,7 @@ backlog = 2048
 
 # Worker processes
 workers = int(os.environ.get('WEB_WORKERS', multiprocessing.cpu_count() * 2 + 1))
-worker_class = 'gevent'  # Async worker for better I/O handling
+worker_class = 'sync'  # Standard worker for Render deployment
 worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 50
