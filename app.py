@@ -308,45 +308,77 @@ def health_check():
         'offline_ready': True
     }), 200
 
-# Demo user creation endpoint for testing
-@app.route('/create-demo-user')
-def create_demo_user():
-    """Create demo user for testing login functionality"""
+# Database initialization and demo user creation
+@app.route('/init-database')
+def init_database_endpoint():
+    """Initialize database and create all demo users"""
     try:
-        # Check if demo user already exists
-        existing_user = User.query.filter_by(email='demo@maritime.test').first()
-        if existing_user:
-            return jsonify({
-                'message': 'Demo user already exists',
-                'email': 'demo@maritime.test',
-                'password': 'demo123'
-            })
+        # Create all tables
+        db.create_all()
         
-        # Create demo user
-        demo_user = User(
-            email='demo@maritime.test',
-            username='demo_user',
-            password_hash=generate_password_hash('demo123'),
-            first_name='Demo',
-            last_name='User',
-            role='operator',
-            company='Maritime Demo Corp',
-            is_active=True
-        )
+        users_created = []
         
-        db.session.add(demo_user)
+        # Create admin user if not exists
+        if not User.query.filter_by(email='admin@stevedores.com').first():
+            admin = User(
+                email='admin@stevedores.com',
+                username='admin',
+                password_hash=generate_password_hash('admin123'),
+                first_name='Admin',
+                last_name='User',
+                role='manager',
+                company='Maritime Operations Inc',
+                is_active=True
+            )
+            db.session.add(admin)
+            users_created.append('admin@stevedores.com')
+        
+        # Create stevedore user if not exists
+        if not User.query.filter_by(email='stevedore@stevedores.com').first():
+            stevedore = User(
+                email='stevedore@stevedores.com',
+                username='stevedore',
+                password_hash=generate_password_hash('stevedore123'),
+                first_name='Stevedore',
+                last_name='Operator',
+                role='stevedore',
+                company='Maritime Operations Inc',
+                is_active=True
+            )
+            db.session.add(stevedore)
+            users_created.append('stevedore@stevedores.com')
+        
+        # Create additional demo user
+        if not User.query.filter_by(email='demo@maritime.test').first():
+            demo_user = User(
+                email='demo@maritime.test',
+                username='demo_user',
+                password_hash=generate_password_hash('demo123'),
+                first_name='Demo',
+                last_name='User',
+                role='operator',
+                company='Maritime Demo Corp',
+                is_active=True
+            )
+            db.session.add(demo_user)
+            users_created.append('demo@maritime.test')
+        
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Demo user created successfully',
-            'email': 'demo@maritime.test',
-            'password': 'demo123'
+            'message': 'Database initialized successfully',
+            'users_created': users_created,
+            'available_accounts': {
+                'manager': 'admin@stevedores.com / admin123',
+                'stevedore': 'stevedore@stevedores.com / stevedore123',
+                'demo': 'demo@maritime.test / demo123'
+            }
         })
         
     except Exception as e:
-        logger.error(f"Demo user creation error: {e}")
-        return jsonify({'error': f'Failed to create demo user: {str(e)}'}), 500
+        logger.error(f"Database initialization error: {e}")
+        return jsonify({'error': f'Database initialization failed: {str(e)}'}), 500
 
 # API Routes
 @app.route('/api/vessels/summary')
