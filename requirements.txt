@@ -1,19 +1,19 @@
-# Flask Core - Python 3.13 compatible versions
-Flask==3.0.0
-Flask-SQLAlchemy==3.1.1
+# Flask Core - Stable Python 3.13 versions
+Flask==2.3.3
+Flask-SQLAlchemy==2.5.1
 Flask-Login==0.6.3
-Flask-WTF==1.2.1
+Flask-WTF==1.1.1
 
-# Database - Supabase PostgreSQL
-SQLAlchemy==2.0.23
+# Database - Supabase PostgreSQL (stable for Python 3.13)
+SQLAlchemy==1.4.53
 psycopg2-binary==2.9.9
 
 # Caching - Upstash Redis
-redis==5.0.1
+redis==4.6.0
 
 # Security
-Werkzeug==3.0.1
-WTForms==3.1.1
+Werkzeug==2.3.7
+WTForms==3.0.1
 
 # Utilities
 python-dotenv==1.0.0
