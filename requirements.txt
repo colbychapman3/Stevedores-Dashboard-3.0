@@ -6,7 +6,7 @@ Flask-WTF==1.1.1
 
 # Database - Supabase PostgreSQL
 SQLAlchemy==1.4.53
-psycopg2-binary==2.9.7
+psycopg2-binary==2.9.9
 
 # Caching - Upstash Redis
 redis==4.6.0
