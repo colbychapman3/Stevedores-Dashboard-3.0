@@ -245,7 +245,7 @@ async function staleWhileRevalidateStrategy(request, cache) {
     const cachedResponse = await cache.match(request);
     
     // Always try to fetch fresh data in background
-    const fetchPromise = fetch(request).then(response => {
+    const fetchPromise = fetch(request, { redirect: 'follow' }).then(response => {
         if (response.ok) {
             cache.put(request.clone(), response.clone());
         }
@@ -318,7 +318,7 @@ async function handleStaticResource(request, url) {
     
     try {
         // Fetch from network
-        const networkResponse = await fetch(request);
+        const networkResponse = await fetch(request, { redirect: 'follow' });
         
         if (networkResponse.ok) {
             // Cache static resources for offline use
@@ -377,7 +377,7 @@ async function handleNavigationRequest(request, url) {
         );
         
         const networkResponse = await Promise.race([
-            fetch(request),
+            fetch(request, { redirect: 'follow' }),
             timeoutPromise
         ]);
         
@@ -435,7 +435,7 @@ async function handleGenericRequest(request, url) {
     const runtimeCache = await caches.open(RUNTIME_CACHE);
     
     try {
-        const networkResponse = await fetch(request);
+        const networkResponse = await fetch(request, { redirect: 'follow' });
         
         if (networkResponse.ok) {
             // Cache for potential offline use
