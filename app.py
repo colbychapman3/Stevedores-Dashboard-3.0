@@ -100,17 +100,50 @@ def dashboard():
 # PWA routes
 @app.route('/manifest.json')
 def manifest():
-    """PWA Web App Manifest"""
+    """Advanced PWA Web App Manifest with comprehensive offline support"""
     manifest_data = {
-        "name": "Stevedores Dashboard 3.0",
-        "short_name": "StevedoresDash",
-        "description": "Offline-capable maritime stevedoring operations management",
-        "start_url": "/dashboard",
+        "name": "Stevedores Dashboard 3.0 - Maritime Operations",
+        "short_name": "StevedoresPWA",
+        "description": "Advanced offline-capable maritime stevedoring operations management system optimized for ship operations",
+        "start_url": "/dashboard?pwa=true",
         "display": "standalone",
         "background_color": "#1e40af",
         "theme_color": "#3b82f6",
         "orientation": "portrait-primary",
+        "scope": "/",
+        
+        # Advanced PWA icons with multiple purposes
         "icons": [
+            {
+                "src": "/static/icons/icon-72x72.png",
+                "sizes": "72x72",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": "/static/icons/icon-96x96.png",
+                "sizes": "96x96",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": "/static/icons/icon-128x128.png",
+                "sizes": "128x128",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": "/static/icons/icon-144x144.png",
+                "sizes": "144x144",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
+                "src": "/static/icons/icon-152x152.png",
+                "sizes": "152x152",
+                "type": "image/png",
+                "purpose": "any"
+            },
             {
                 "src": "/static/icons/icon-192x192.png",
                 "sizes": "192x192",
@@ -118,20 +151,129 @@ def manifest():
                 "purpose": "any maskable"
             },
             {
+                "src": "/static/icons/icon-384x384.png",
+                "sizes": "384x384",
+                "type": "image/png",
+                "purpose": "any"
+            },
+            {
                 "src": "/static/icons/icon-512x512.png",
                 "sizes": "512x512", 
                 "type": "image/png",
                 "purpose": "any maskable"
+            },
+            {
+                "src": "/static/icons/maskable-icon-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "maskable"
+            },
+            {
+                "src": "/static/icons/maskable-icon-512x512.png",
+                "sizes": "512x512",
+                "type": "image/png", 
+                "purpose": "maskable"
             }
         ],
-        "categories": ["productivity", "business"],
-        "display_override": ["standalone", "minimal-ui"],
-        "prefer_related_applications": False
+        
+        # Advanced PWA features
+        "categories": ["productivity", "business", "navigation", "utilities"],
+        "display_override": ["standalone", "minimal-ui", "browser"],
+        "prefer_related_applications": False,
+        "edge_side_panel": {
+            "preferred_width": 480
+        },
+        
+        # Maritime-specific shortcuts
+        "shortcuts": [
+            {
+                "name": "New Vessel",
+                "short_name": "New Vessel",
+                "description": "Create a new vessel operation",
+                "url": "/wizard?shortcut=true",
+                "icons": [
+                    {
+                        "src": "/static/icons/shortcut-vessel.png",
+                        "sizes": "96x96",
+                        "type": "image/png"
+                    }
+                ]
+            },
+            {
+                "name": "Cargo Tally",
+                "short_name": "Cargo Tally",
+                "description": "Quick cargo tally input",
+                "url": "/dashboard?view=tally",
+                "icons": [
+                    {
+                        "src": "/static/icons/shortcut-cargo.png",
+                        "sizes": "96x96",
+                        "type": "image/png"
+                    }
+                ]
+            },
+            {
+                "name": "Offline Dashboard",
+                "short_name": "Offline",
+                "description": "Access offline dashboard",
+                "url": "/dashboard?offline=true",
+                "icons": [
+                    {
+                        "src": "/static/icons/shortcut-offline.png",
+                        "sizes": "96x96",
+                        "type": "image/png"
+                    }
+                ]
+            }
+        ],
+        
+        # Protocol handlers for maritime operations
+        "protocol_handlers": [
+            {
+                "protocol": "web+stevedores",
+                "url": "/handle-protocol?type=%s"
+            }
+        ],
+        
+        # File handlers for maritime documents
+        "file_handlers": [
+            {
+                "action": "/document/upload",
+                "accept": {
+                    "application/pdf": [".pdf"],
+                    "text/plain": [".txt"],
+                    "text/csv": [".csv"],
+                    "application/vnd.ms-excel": [".xlsx", ".xls"]
+                }
+            }
+        ],
+        
+        # Advanced launch configuration
+        "launch_handler": {
+            "client_mode": "focus-existing"
+        },
+        
+        # Manifest ID for update detection
+        "id": "/manifest.json",
+        
+        # Enhanced metadata
+        "lang": "en-US",
+        "dir": "ltr",
+        "iarc_rating_id": "none",
+        
+        # Maritime-specific metadata
+        "related_applications": [],
+        "prefer_related_applications": False,
+        
+        # Advanced PWA capabilities
+        "handle_links": "preferred",
+        "capture_links": "new-client"
     }
     
     response = make_response(jsonify(manifest_data))
     response.headers['Content-Type'] = 'application/manifest+json'
-    response.headers['Cache-Control'] = 'public, max-age=3600'
+    response.headers['Cache-Control'] = 'public, max-age=86400'  # 24 hours cache
+    response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
 @app.route('/service-worker.js')

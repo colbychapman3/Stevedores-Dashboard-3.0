@@ -7,11 +7,27 @@
     
     <title>{% block title %}Stevedores Dashboard 3.0{% endblock %}</title>
     
-    <!-- PWA Meta Tags -->
+    <!-- Advanced PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Stevedores Dashboard">
+    <meta name="apple-mobile-web-app-title" content="StevedoresPWA">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/icon-192x192.png">
+    
+    <!-- MS Application Config -->
+    <meta name="msapplication-TileColor" content="#3b82f6">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- Advanced PWA Features -->
+    <meta name="application-name" content="StevedoresPWA">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="320">
     
     <!-- Offline-first styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -324,6 +340,9 @@
         // Initialize connection status
         updateConnectionStatus();
     </script>
+    
+    <!-- Advanced PWA Manager -->
+    <script src="/static/js/pwa-manager.js"></script>
     
     <!-- Sync Manager (for authenticated users) -->
     {% if current_user.is_authenticated %}
