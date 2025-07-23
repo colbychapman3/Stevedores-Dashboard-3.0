@@ -2,7 +2,7 @@
 // Critical for maritime operations where connectivity is unreliable
 // Enhanced with background sync, smart caching, and offline-first strategies
 
-const VERSION = '3.0.3';
+const VERSION = '3.0.4';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
@@ -120,8 +120,8 @@ self.addEventListener('fetch', event => {
     const { request } = event;
     const url = new URL(request.url);
     
-    // Skip non-GET requests and external domains
-    if (request.method !== 'GET' || url.origin !== location.origin) {
+    // Skip non-GET requests, external domains, and critical init endpoints
+    if (request.method !== 'GET' || url.origin !== location.origin || url.pathname === '/init-database') {
         return;
     }
     
