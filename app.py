@@ -318,46 +318,12 @@ def init_database_endpoint():
         
         users_created = []
         
-        # Create admin user if not exists
-        if not User.query.filter_by(email='admin@stevedores.com').first():
-            admin = User(
-                email='admin@stevedores.com',
-                username='admin',
-                password_hash=generate_password_hash('admin123'),
-                first_name='Admin',
-                last_name='User',
-                role='manager',
-                company='Maritime Operations Inc',
-                is_active=True
-            )
-            db.session.add(admin)
-            users_created.append('admin@stevedores.com')
-        
-        # Create stevedore user if not exists
-        if not User.query.filter_by(email='stevedore@stevedores.com').first():
-            stevedore = User(
-                email='stevedore@stevedores.com',
-                username='stevedore',
-                password_hash=generate_password_hash('stevedore123'),
-                first_name='Stevedore',
-                last_name='Operator',
-                role='stevedore',
-                company='Maritime Operations Inc',
-                is_active=True
-            )
-            db.session.add(stevedore)
-            users_created.append('stevedore@stevedores.com')
-        
-        # Create additional demo user
+        # Create simple demo user
         if not User.query.filter_by(email='demo@maritime.test').first():
             demo_user = User(
                 email='demo@maritime.test',
                 username='demo_user',
                 password_hash=generate_password_hash('demo123'),
-                first_name='Demo',
-                last_name='User',
-                role='operator',
-                company='Maritime Demo Corp',
                 is_active=True
             )
             db.session.add(demo_user)
@@ -369,11 +335,7 @@ def init_database_endpoint():
             'success': True,
             'message': 'Database initialized successfully',
             'users_created': users_created,
-            'available_accounts': {
-                'manager': 'admin@stevedores.com / admin123',
-                'stevedore': 'stevedore@stevedores.com / stevedore123',
-                'demo': 'demo@maritime.test / demo123'
-            }
+            'login_credentials': 'demo@maritime.test / demo123'
         })
         
     except Exception as e:
