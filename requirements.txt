@@ -1,11 +1,15 @@
-# Flask Core - Minimal for offline-first app
+# Flask Core - Render deployment optimized
 Flask==2.3.3
 Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
 
-# Database
+# Database - Supabase PostgreSQL
 SQLAlchemy==2.0.21
+psycopg2-binary==2.9.7
+
+# Caching - Upstash Redis
+redis==4.6.0
 
 # Security
 Werkzeug==2.3.7
@@ -17,3 +21,4 @@ click==8.1.7
 
 # Production WSGI Server
 gunicorn==21.2.0
+gevent==23.7.0

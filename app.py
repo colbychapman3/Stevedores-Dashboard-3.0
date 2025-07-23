@@ -16,18 +16,25 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configuration
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'stevedores-dashboard-3.0-secret-key')
+# Configuration - Render deployment
+config_name = os.environ.get('FLASK_CONFIG', 'render')
+try:
+    from render_config import config
+    app.config.from_object(config[config_name])
+    config[config_name].init_app(app)
+except ImportError:
+    # Fallback to basic config
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'stevedores-dashboard-3.0-secret-key')
 
-# Database configuration - SQLite for development, PostgreSQL for production
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///stevedores.db')
+# Database configuration - handled by render_config.py for production
 
-# Fix Render's postgres:// to postgresql:// if needed
+# Fix Supabase postgres:// to postgresql:// if needed
+database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///stevedores.db')
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# SQLAlchemy settings handled by render_config.py
 
 # Security configurations
 app.config['WTF_CSRF_TIME_LIMIT'] = None
