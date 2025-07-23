@@ -1,11 +1,11 @@
 # Flask Core - Render deployment optimized
 Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
+Flask-SQLAlchemy==2.5.1
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
 
 # Database - Supabase PostgreSQL
-SQLAlchemy==2.0.21
+SQLAlchemy==1.4.53
 psycopg2-binary==2.9.7
 
 # Caching - Upstash Redis
