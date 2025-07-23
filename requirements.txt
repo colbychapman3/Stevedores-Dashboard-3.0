@@ -21,4 +21,3 @@ click==8.1.7
 
 # Production WSGI Server
 gunicorn==21.2.0
-gevent==23.7.0
