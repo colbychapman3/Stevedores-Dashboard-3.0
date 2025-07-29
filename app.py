@@ -88,6 +88,15 @@ login_manager = LoginManager(app)
 from utils.security_manager import init_security_manager
 security_manager = init_security_manager(app)
 
+# Initialize Phase 2: API Security Layer
+from utils.jwt_auth import init_jwt_auth
+from utils.audit_logger import init_audit_logger
+from utils.api_middleware import init_api_middleware
+
+jwt_manager = init_jwt_auth(app)
+audit_logger = init_audit_logger(app)
+api_middleware = init_api_middleware(app)
+
 # Initialize database retry logic for production stability
 # Import and initialize after db is created to avoid circular imports
 db_retry_manager = None

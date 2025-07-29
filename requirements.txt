@@ -19,6 +19,9 @@ Flask-Talisman==1.1.0  # Security headers (CSP, HSTS, etc.)
 Flask-Limiter==3.5.0   # Rate limiting and brute force protection
 bleach==6.1.0          # HTML sanitization for XSS prevention
 cryptography==45.0.5   # Cryptographic operations for secure features
+PyJWT==2.8.0           # JWT token authentication for APIs
+marshmallow==3.21.0    # API request/response validation
+apispec==6.3.0         # OpenAPI specification generation
 
 # Utilities
 python-dotenv==1.0.0
