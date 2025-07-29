@@ -12,13 +12,18 @@ psycopg2-binary==2.9.10
 # Caching - Upstash Redis
 redis==4.6.0
 
-# Security
+# Security - Enhanced maritime security stack
 Werkzeug==2.3.7
 WTForms==3.0.1
+Flask-Talisman==1.1.0  # Security headers (CSP, HSTS, etc.)
+Flask-Limiter==3.5.0   # Rate limiting and brute force protection
+bleach==6.1.0          # HTML sanitization for XSS prevention
+cryptography==45.0.5   # Cryptographic operations for secure features
 
 # Utilities
 python-dotenv==1.0.0
 click==8.1.7
+python-magic==0.4.27    # File type detection for security
 
 # Production WSGI Server
 gunicorn==21.2.0

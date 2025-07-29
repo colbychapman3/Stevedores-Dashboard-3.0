@@ -84,6 +84,10 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 
+# Initialize Security Manager for maritime operations
+from utils.security_manager import init_security_manager
+security_manager = init_security_manager(app)
+
 # Initialize database retry logic for production stability
 # Import and initialize after db is created to avoid circular imports
 db_retry_manager = None
