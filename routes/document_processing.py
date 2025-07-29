@@ -73,17 +73,23 @@ def upload_document():
         current_app.logger.error(f"Document upload error: {e}")
         return jsonify({'error': 'Document processing failed'}), 500
 
+from app import InputValidator
+
 @document_bp.route('/process-text', methods=['POST'])
-@login_required 
+@login_required
 def process_text():
     """Process raw text content for auto-fill (for offline text extraction)"""
     try:
         data = request.get_json()
         if not data or 'text' not in data:
             return jsonify({'error': 'No text content provided'}), 400
-        
-        text_content = data['text']
-        filename = data.get('filename', 'uploaded_document')
+
+        validator = InputValidator(data)
+        validator.sanitize_html('text')
+        sanitized_data = validator.get_sanitized_data()
+
+        text_content = sanitized_data['text']
+        filename = sanitized_data.get('filename', 'uploaded_document')
         
         # Process text for auto-fill
         result = processor.process_document_text(text_content, filename)

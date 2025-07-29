@@ -12,6 +12,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import bleach
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -45,11 +49,148 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 
+# Security headers with Talisman
+talisman = Talisman(
+    app,
+    content_security_policy={
+        'default-src': '\'self\'',
+        'script-src': '\'self\' \'nonce\'',
+        'style-src': '\'self\' \'unsafe-inline\'',
+        'img-src': '\'self\' data:',
+    },
+    content_security_policy_nonce_in=['script-src']
+)
+
+# Rate limiting with Flask-Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri=app.config.get('RATELIMIT_STORAGE_URL')
+)
+
+for route, limit in app.config.get('RATELIMIT_ROUTES', {}).items():
+    limiter.limit(limit)(limiter.shared_limit(limit, scope=route)(lambda: route))
+
+import re
+
+# Security Manager
+class SecurityManager:
+    def __init__(self, request):
+        self.request = request
+        self.xss_patterns = [
+            r"<script.*?>.*?</script>",
+            r"javascript\:",
+            r"onerror\s*=",
+        ]
+        self.sql_injection_patterns = [
+            r"(\'|\-\-|\#|\%27|\%23)",
+            r"((union|select|insert|delete|update|drop|alter)[\s\S]*?(from|into|table|database))",
+        ]
+        self.command_injection_patterns = [
+            r"(&&|\|\||;)",
+            r"(cat|ls|dir|whoami|ifconfig|ipconfig|uname|ps|netstat|curl|wget|bash|sh|powershell|cmd|python|perl|ruby|php|node|java|gcc|g\+\+)",
+        ]
+
+    def inspect_request(self):
+        # Inspect query parameters, form data, and headers
+        for key, value in self.request.args.items():
+            if self.is_malicious(value):
+                return True
+        for key, value in self.request.form.items():
+            if self.is_malicious(value):
+                return True
+        for key, value in self.request.headers.items():
+            if self.is_malicious(value):
+                return True
+        return False
+
+    def is_malicious(self, value):
+        for pattern in self.xss_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                return True
+        for pattern in self.sql_injection_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                return True
+        for pattern in self.command_injection_patterns:
+            if re.search(pattern, value, re.IGNORECASE):
+                return True
+        return False
+
+# Input validation and sanitization
+class InputValidator:
+    def __init__(self, data):
+        self.data = data
+        self.errors = {}
+
+    def validate_required(self, field):
+        if not self.data.get(field):
+            self.errors[field] = f"{field} is required"
+            return False
+        return True
+
+    def validate_email(self, field):
+        if not self.validate_required(field):
+            return False
+        # Add more robust email validation if needed
+        if "@" not in self.data[field] or "." not in self.data[field]:
+            self.errors[field] = "Invalid email format"
+            return False
+        return True
+
+    def validate_password(self, field):
+        if not self.validate_required(field):
+            return False
+        if len(self.data[field]) < 8:
+            self.errors[field] = "Password must be at least 8 characters long"
+            return False
+        return True
+
+    def sanitize_html(self, field):
+        if field in self.data:
+            self.data[field] = bleach.clean(
+                self.data[field],
+                tags=['a', 'abbr', 'acronym', 'b', 'blockquote', 'code', 'em', 'i', 'li', 'ol', 'strong', 'ul'],
+                attributes={'a': ['href', 'title']},
+                strip=True
+            )
+
+    def get_sanitized_data(self):
+        return self.data
+
 # Exempt API routes from CSRF protection for offline functionality
 @csrf.exempt
 def csrf_exempt_api(func):
     """Decorator to exempt API routes from CSRF"""
     return func
+
+@app.before_request
+def validate_session():
+    if current_user.is_authenticated:
+        if session.get('ip_address') != request.remote_addr or \
+           session.get('user_agent') != request.headers.get('User-Agent'):
+            logout_user()
+            flash('Your session has been invalidated for security reasons.', 'error')
+            return redirect(url_for('auth.login'))
+
+@app.before_request
+def inspect_request_for_malicious_patterns():
+    # Exempt user agent and referer from inspection
+    exempt_headers = ['User-Agent', 'Referer']
+    headers = {k: v for k, v in request.headers.items() if k not in exempt_headers}
+
+    class ModifiedRequest:
+        pass
+
+    modified_request = ModifiedRequest()
+    modified_request.args = request.args
+    modified_request.form = request.form
+    modified_request.headers = headers
+
+    security_manager = SecurityManager(modified_request)
+    if security_manager.inspect_request():
+        return "Malicious request detected", 403
+
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Please log in to access this page.'
 
@@ -318,39 +459,6 @@ def health_check():
         'offline_ready': True
     }), 200
 
-# Database initialization and demo user creation
-@app.route('/init-database')
-def init_database_endpoint():
-    """Initialize database and create all demo users"""
-    try:
-        # Create all tables
-        db.create_all()
-        
-        users_created = []
-        
-        # Create simple demo user
-        if not User.query.filter_by(email='demo@maritime.test').first():
-            demo_user = User(
-                email='demo@maritime.test',
-                username='demo_user',
-                password_hash=generate_password_hash('demo123'),
-                is_active=True
-            )
-            db.session.add(demo_user)
-            users_created.append('demo@maritime.test')
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Database initialized successfully',
-            'users_created': users_created,
-            'login_credentials': 'demo@maritime.test / demo123'
-        })
-        
-    except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return jsonify({'error': f'Database initialization failed: {str(e)}'}), 500
 
 # API Routes
 @app.route('/api/vessels/summary')
@@ -380,9 +488,14 @@ def api_vessel_details(vessel_id):
         return jsonify({'error': 'Failed to fetch vessel details'}), 500
 
 @app.route('/api/vessels/<int:vessel_id>/cargo-tally', methods=['GET', 'POST'])
-@csrf.exempt
 def api_vessel_cargo_tally(vessel_id):
     """Handle cargo tally for specific vessel"""
+    if request.method == 'POST':
+        # Custom CSRF protection for API endpoint
+        csrf_token = request.headers.get('X-CSRF-Token')
+        if not csrf_token or not csrf.validate_csrf(csrf_token):
+            return jsonify({'error': 'Invalid CSRF token'}), 400
+
     try:
         vessel = Vessel.query.get_or_404(vessel_id)
         
@@ -505,9 +618,8 @@ app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
 
-# Exempt document processing, sync, offline dashboard, and auth routes from CSRF for offline functionality
+# Exempt document processing, sync, and offline dashboard routes from CSRF for offline functionality
 csrf.exempt(document_bp)
-csrf.exempt(auth_bp)
 csrf.exempt(sync_bp)
 csrf.exempt(offline_dashboard_bp)
 

@@ -6,6 +6,36 @@ Optimized for maritime operations with enhanced security and performance
 import os
 from datetime import timedelta
 
+def get_database_config(environment='production'):
+    """Shared database configuration logic"""
+    if environment == 'production':
+        db_uri = os.environ.get('DATABASE_URL') or 'sqlite:///stevedores_production.db'
+        engine_options = {}
+        if db_uri.startswith('postgresql'):
+            engine_options = {
+                'pool_recycle': 300,
+                'pool_pre_ping': True,
+                'pool_size': 10,
+                'max_overflow': 20,
+            }
+        return {
+            'SQLALCHEMY_DATABASE_URI': db_uri,
+            'SQLALCHEMY_ENGINE_OPTIONS': engine_options,
+            'SQLALCHEMY_TRACK_MODIFICATIONS': False
+        }
+    elif environment == 'testing':
+        return {
+            'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+            'SQLALCHEMY_ENGINE_OPTIONS': {},
+            'SQLALCHEMY_TRACK_MODIFICATIONS': False
+        }
+    elif environment == 'development':
+        return {
+            'SQLALCHEMY_DATABASE_URI': 'sqlite:///stevedores_dev.db',
+            'SQLALCHEMY_ENGINE_OPTIONS': {},
+            'SQLALCHEMY_TRACK_MODIFICATIONS': True
+        }
+
 class ProductionConfig:
     """Production configuration with security and performance optimizations"""
     
@@ -14,27 +44,23 @@ class ProductionConfig:
     DEBUG = False
     TESTING = False
     
-    # Database Configuration
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///stevedores_production.db'
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_recycle': 300,
-        'pool_pre_ping': True,
-        'pool_size': 10,
-        'max_overflow': 20,
-    }
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Apply shared database configuration
+    _db_config = get_database_config('production')
+    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
+    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
+    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
     
     # Security Configuration
     WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = 3600  # 1 hour
+    WTF_CSRF_TIME_LIMIT = 3600
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)  # 8-hour work shift
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     
     # Performance Configuration
-    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)  # Static assets cache
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
+    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
@@ -42,7 +68,7 @@ class ProductionConfig:
     
     # PWA Configuration
     PWA_CACHE_VERSION = '3.0.1'
-    PWA_OFFLINE_TIMEOUT = 30  # seconds
+    PWA_OFFLINE_TIMEOUT = 30
     
     # Maritime-specific Configuration
     MAX_VESSELS_PER_USER = 50
@@ -76,6 +102,9 @@ class ProductionConfig:
     # Rate Limiting
     RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
     RATELIMIT_DEFAULT = "100 per hour"
+    RATELIMIT_ROUTES = {
+        'auth.login': '5 per minute',
+    }
     
     # File Upload Configuration
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/stevedores_uploads')
@@ -99,7 +128,7 @@ class ProductionConfig:
             
             file_handler = RotatingFileHandler(
                 'logs/stevedores_dashboard.log',
-                maxBytes=10240000,  # 10MB
+                maxBytes=10240000,
                 backupCount=10
             )
             file_handler.setFormatter(logging.Formatter(
@@ -116,7 +145,7 @@ class StagingConfig(ProductionConfig):
     """Staging configuration - production-like but with debugging enabled"""
     DEBUG = True
     TESTING = False
-    SESSION_COOKIE_SECURE = False  # For local testing
+    SESSION_COOKIE_SECURE = False
     
     # Less strict rate limiting for staging
     RATELIMIT_DEFAULT = "1000 per hour"
@@ -129,8 +158,10 @@ class DevelopmentConfig:
     SECRET_KEY = 'dev-secret-key'
     
     # SQLite for development
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///stevedores_dev.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    _db_config = get_database_config('development')
+    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
+    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
+    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
     
     # Disable security features for development
     WTF_CSRF_ENABLED = False
@@ -151,10 +182,12 @@ class TestingConfig:
     TESTING = True
     DEBUG = True
     SECRET_KEY = 'test-secret-key'
-    
-    # In-memory database for testing
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Apply shared database configuration
+    _db_config = get_database_config('testing')
+    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
+    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
+    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
     
     # Disable security for testing
     WTF_CSRF_ENABLED = False
@@ -163,6 +196,10 @@ class TestingConfig:
     # Fast testing settings
     CACHE_TYPE = 'simple'
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=5)
+
+    @staticmethod
+    def init_app(app):
+        pass
 
 
 # Configuration dictionary

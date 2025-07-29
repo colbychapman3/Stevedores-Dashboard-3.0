@@ -30,10 +30,10 @@
     <meta name="MobileOptimized" content="320">
     
     <!-- Offline-first styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" nonce="{{ csp_nonce() }}"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     
-    <style>
+    <style nonce="{{ csp_nonce() }}">
         /* Offline indicator */
         .offline-indicator {
             background: #ef4444;
@@ -255,7 +255,7 @@
     </main>
     
     <!-- Base JavaScript for offline functionality -->
-    <script>
+    <script nonce="{{ csp_nonce() }}">
         // Connection status tracking
         let isOnline = navigator.onLine;
         let isAppInstalled = false;
@@ -342,11 +342,11 @@
     </script>
     
     <!-- Advanced PWA Manager -->
-    <script src="/static/js/pwa-manager.js"></script>
+    <script src="/static/js/pwa-manager.js" nonce="{{ csp_nonce() }}"></script>
     
     <!-- Sync Manager (for authenticated users) -->
     {% if current_user.is_authenticated %}
-    <script src="/static/js/sync-manager.js"></script>
+    <script src="/static/js/sync-manager.js" nonce="{{ csp_nonce() }}"></script>
     {% endif %}
     
     {% block extra_js %}{% endblock %}

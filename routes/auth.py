@@ -16,81 +16,68 @@ def get_db_and_models():
     User = create_user_model(db)
     return db, User
 
+from app import InputValidator, limiter
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     """User login endpoint"""
     if request.method == 'GET':
         if current_user.is_authenticated:
             return redirect(url_for('dashboard'))
         return render_template('auth/login.html')
-    
+
     # Handle POST request
     try:
-        print(f"[DEBUG] Login attempt started")
-        db, User = get_db_and_models()
-        print(f"[DEBUG] Got database and User model")
-        
         if request.is_json:
             data = request.get_json()
-            email = data.get('email', '').strip().lower()
-            password = data.get('password', '')
-            print(f"[DEBUG] JSON request - email: {email}")
         else:
-            email = request.form.get('email', '').strip().lower()
-            password = request.form.get('password', '')
-            print(f"[DEBUG] Form request - email: {email}")
-        
-        # Validate input
-        if not email or not password:
-            print(f"[DEBUG] Missing email or password")
+            data = request.form.to_dict()
+
+        validator = InputValidator(data)
+        validator.validate_email('email')
+        validator.validate_password('password')
+
+        if validator.errors:
             if request.is_json:
-                return jsonify({'error': 'Email and password are required'}), 400
-            flash('Email and password are required', 'error')
+                return jsonify({'errors': validator.errors}), 400
+            for error in validator.errors.values():
+                flash(error, 'error')
             return render_template('auth/login.html')
+
+        sanitized_data = validator.get_sanitized_data()
+        email = sanitized_data.get('email').strip().lower()
+        password = sanitized_data.get('password')
+
+        db, User = get_db_and_models()
         
         # Find user
-        print(f"[DEBUG] Looking up user with email: {email}")
         user = User.query.filter_by(email=email).first()
-        print(f"[DEBUG] User found: {user is not None}")
-        
-        if user:
-            print(f"[DEBUG] User exists - is_active: {user.is_active}")
-            password_valid = user.check_password(password)
-            print(f"[DEBUG] Password check result: {password_valid}")
-            
-            if password_valid and user.is_active:
-                print(f"[DEBUG] Authentication successful, logging in user")
-                login_user(user, remember=True)
-                user.update_last_login()
-                print(f"[DEBUG] User logged in successfully")
-                
-                if request.is_json:
-                    return jsonify({
-                        'success': True,
-                        'user': user.to_dict(),
-                        'redirect_url': url_for('dashboard')
-                    })
-                return redirect(url_for('dashboard'))
-            else:
-                print(f"[DEBUG] Authentication failed - password_valid: {password_valid}, is_active: {user.is_active}")
-        else:
-            print(f"[DEBUG] No user found with email: {email}")
-        
+
+        if user and user.check_password(password) and user.is_active:
+            login_user(user, remember=True)
+            user.update_last_login()
+            session['ip_address'] = request.remote_addr
+            session['user_agent'] = request.headers.get('User-Agent')
+
+            if request.is_json:
+                return jsonify({
+                    'success': True,
+                    'user': user.to_dict(),
+                    'redirect_url': url_for('dashboard')
+                })
+            return redirect(url_for('dashboard'))
+
         error_msg = 'Invalid email or password'
         if request.is_json:
             return jsonify({'error': error_msg}), 401
         flash(error_msg, 'error')
         return render_template('auth/login.html')
-            
+
     except Exception as e:
-        print(f"[DEBUG] Exception during login: {str(e)}")
-        print(f"[DEBUG] Exception type: {type(e).__name__}")
-        import traceback
-        print(f"[DEBUG] Traceback: {traceback.format_exc()}")
-        
         error_msg = f'Login failed: {str(e)}'
         if request.is_json:
-            return jsonify({'error': error_msg, 'debug': str(e)}), 500
+            return jsonify({'error': error_msg}), 500
         flash(error_msg, 'error')
         return render_template('auth/login.html')
 
@@ -103,53 +90,10 @@ def logout():
     return redirect(url_for('index'))
 
 @auth_bp.route('/api/user')
-@login_required  
+@login_required
 def current_user_info():
     """Get current user information (API endpoint)"""
     return jsonify({
         'user': current_user.to_dict(),
         'authenticated': True
     })
-
-@auth_bp.route('/debug-user')
-def debug_user():
-    """Debug endpoint to test user lookup and password verification"""
-    try:
-        db, User = get_db_and_models()
-        
-        # Test user lookup
-        email = 'demo@maritime.test'
-        user = User.query.filter_by(email=email).first()
-        
-        result = {
-            'user_exists': user is not None,
-            'email_searched': email,
-        }
-        
-        if user:
-            result.update({
-                'user_id': user.id,
-                'user_email': user.email,
-                'user_username': user.username,
-                'user_is_active': user.is_active,
-                'password_hash_exists': bool(user.password_hash),
-                'password_hash_length': len(user.password_hash) if user.password_hash else 0,
-            })
-            
-            # Test password verification
-            test_password = 'demo123'
-            try:
-                password_check_result = user.check_password(test_password)
-                result['password_check_success'] = True
-                result['password_check_result'] = password_check_result
-            except Exception as e:
-                result['password_check_success'] = False
-                result['password_check_error'] = str(e)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'exception_type': type(e).__name__
-        })
