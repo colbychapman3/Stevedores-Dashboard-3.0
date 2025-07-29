@@ -69,9 +69,39 @@ class RenderConfig:
         app.logger.info('🚢 Stevedores Dashboard 3.0 starting on Render')
         app.logger.info(f'⚓ PWA Cache Version: {app.config.get("PWA_CACHE_VERSION")}')
 
+# Testing configuration
+class TestingConfig:
+    """Testing configuration"""
+    TESTING = True
+    DEBUG = True
+    SECRET_KEY = 'test-secret-key'
+    
+    # In-memory database for testing
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # SQLite-specific engine options (no pool settings)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+    }
+    
+    # Disable security for testing
+    WTF_CSRF_ENABLED = False
+    WTF_CSRF_TIME_LIMIT = None
+    
+    # Fast testing settings
+    CACHE_TYPE = 'simple'
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=5)
+    
+    @staticmethod
+    def init_app(app):
+        """Initialize app for testing"""
+        pass
+
 # Configuration mapping
 config = {
     'render': RenderConfig,
     'production': RenderConfig,
+    'testing': TestingConfig,
     'default': RenderConfig
 }

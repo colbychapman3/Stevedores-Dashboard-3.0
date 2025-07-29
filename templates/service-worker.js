@@ -115,19 +115,33 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Advanced fetch handler with multiple caching strategies
+// Advanced fetch handler with multiple caching strategies and authentication awareness
 self.addEventListener('fetch', event => {
     const { request } = event;
     const url = new URL(request.url);
     
-    // Skip non-GET requests, external domains, and critical auth/init endpoints
-    if (request.method !== 'GET' || url.origin !== location.origin || 
-        url.pathname === '/init-database' || url.pathname === '/dashboard' || url.pathname.startsWith('/auth/')) {
+    // Skip non-GET requests and external domains
+    if (request.method !== 'GET' || url.origin !== location.origin) {
         return;
     }
     
-    // Route requests to appropriate handlers based on type
-    if (isAPIRequest(url)) {
+    // Skip critical endpoints that should never be cached or intercepted
+    const skipPatterns = [
+        '/init-database',
+        '/auth/login',  // Allow login page to be handled normally
+        '/auth/logout', // Allow logout to be handled normally
+        '/auth/api/',   // Skip API auth endpoints
+    ];
+    
+    const shouldSkip = skipPatterns.some(pattern => url.pathname.startsWith(pattern));
+    if (shouldSkip) {
+        return;
+    }
+    
+    // SECURITY FIX: Check authentication status for protected routes
+    if (isProtectedRoute(url)) {
+        event.respondWith(handleProtectedRequest(request, url));
+    } else if (isAPIRequest(url)) {
         event.respondWith(handleAPIRequest(request, url));
     } else if (isStaticResource(url)) {
         event.respondWith(handleStaticResource(request, url));
@@ -139,7 +153,7 @@ self.addEventListener('fetch', event => {
     }
 });
 
-// Enhanced request type detection
+// Enhanced request type detection with authentication awareness
 function isAPIRequest(url) {
     return API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
 }
@@ -153,6 +167,94 @@ function isNavigationRequest(request, url) {
            (request.method === 'GET' && 
             request.headers.get('accept')?.includes('text/html')) ||
            NAVIGATION_PATTERNS.some(pattern => pattern.test(url.pathname));
+}
+
+// SECURITY FIX: Identify protected routes that require authentication
+function isProtectedRoute(url) {
+    const protectedPatterns = [
+        /^\/dashboard/,
+        /^\/vessel\/\d+/,
+        /^\/cargo-tally/,
+        /^\/reports/,
+        /^\/api\/vessels/,
+        /^\/api\/user/,
+        /^\/sync\//
+    ];
+    
+    return protectedPatterns.some(pattern => pattern.test(url.pathname));
+}
+
+// SECURITY FIX: Handle protected requests with authentication checks
+async function handleProtectedRequest(request, url) {
+    try {
+        // Always check network first for protected routes to validate authentication
+        const networkResponse = await fetch(request, { redirect: 'follow' });
+        
+        // If we get a redirect to login, authentication failed
+        if (networkResponse.redirected && networkResponse.url.includes('/auth/login')) {
+            // Clear any cached protected content and redirect to login
+            await clearProtectedCache();
+            return Response.redirect('/auth/login', 302);
+        }
+        
+        // If successful, cache the response if appropriate
+        if (networkResponse.ok) {
+            const runtimeCache = await caches.open(RUNTIME_CACHE);
+            
+            // Only cache non-sensitive content
+            if (!url.pathname.includes('/api/user') && !url.pathname.includes('/sync/')) {
+                runtimeCache.put(request, networkResponse.clone());
+            }
+            
+            return networkResponse;
+        }
+        
+        // Network request failed, try cache as fallback
+        throw new Error(`HTTP ${networkResponse.status}`);
+        
+    } catch (error) {
+        console.log(`[SW] Protected route network failed: ${request.url}`);
+        
+        // For protected routes, don't serve stale cache - redirect to login instead
+        return Response.redirect('/auth/login', 302);
+    }
+}
+
+// Clear cached protected content when authentication fails
+async function clearProtectedCache() {
+    try {
+        const runtimeCache = await caches.open(RUNTIME_CACHE);
+        const apiCache = await caches.open(API_CACHE);
+        
+        const protectedUrls = [
+            '/dashboard',
+            '/vessel/',
+            '/cargo-tally',
+            '/reports',
+            '/api/vessels',
+            '/api/user'
+        ];
+        
+        for (const urlPattern of protectedUrls) {
+            const keys = await runtimeCache.keys();
+            for (const key of keys) {
+                if (key.url.includes(urlPattern)) {
+                    await runtimeCache.delete(key);
+                }
+            }
+            
+            const apiKeys = await apiCache.keys();
+            for (const key of apiKeys) {
+                if (key.url.includes(urlPattern)) {
+                    await apiCache.delete(key);
+                }
+            }
+        }
+        
+        console.log('[SW] Cleared protected content from cache');
+    } catch (error) {
+        console.error('[SW] Failed to clear protected cache:', error);
+    }
 }
 
 // Maritime-critical: Initialize offline data structures

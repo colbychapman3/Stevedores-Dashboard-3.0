@@ -5,6 +5,7 @@ Simple login/logout functionality
 
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import validate_csrf, ValidationError
 from werkzeug.security import check_password_hash
 
 auth_bp = Blueprint('auth', __name__)
@@ -27,6 +28,17 @@ def login():
     # Handle POST request
     try:
         print(f"[DEBUG] Login attempt started")
+        
+        # SECURITY FIX: Validate CSRF token for non-JSON requests
+        if not request.is_json:
+            try:
+                validate_csrf(request.form.get('csrf_token'))
+                print(f"[DEBUG] CSRF token validated successfully")
+            except ValidationError as e:
+                print(f"[DEBUG] CSRF validation failed: {e}")
+                flash('Invalid security token. Please try again.', 'error')
+                return render_template('auth/login.html'), 400
+        
         db, User = get_db_and_models()
         print(f"[DEBUG] Got database and User model")
         

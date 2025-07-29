@@ -2,9 +2,11 @@
 """
 Stevedores Dashboard 3.0 - Offline-First Maritime Operations Management
 Built for reliable ship operations regardless of connectivity
+Python 3.12/3.13 compatible
 """
 
 import os
+import sys
 import logging
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, make_response, flash
@@ -13,24 +15,61 @@ from flask_login import LoginManager, login_required, current_user, login_user, 
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 
+# Python version compatibility check
+if sys.version_info < (3, 12):
+    raise RuntimeError("Python 3.12 or higher is required")
+
+# PostgreSQL compatibility check for Python 3.13
+try:
+    import psycopg2
+    # Test if psycopg2 is compatible with current Python version
+    psycopg2_version = psycopg2.__version__
+    logging.info(f"psycopg2-binary {psycopg2_version} loaded successfully with Python {sys.version}")
+except ImportError:
+    logging.warning("psycopg2-binary not available - PostgreSQL features will be limited")
+
 # Initialize Flask app
 app = Flask(__name__)
 
-# Configuration - Render deployment
-config_name = os.environ.get('FLASK_CONFIG', 'render')
+# Configuration - Support multiple config sources
+config_name = os.environ.get('FLASK_CONFIG', 'development')
+config_loaded = False
+
 try:
+    # Try render_config first
     from render_config import config
-    app.config.from_object(config[config_name])
-    config[config_name].init_app(app)
-except ImportError:
+    if config_name in config:
+        app.config.from_object(config[config_name])
+        config[config_name].init_app(app)
+        config_loaded = True
+except (ImportError, KeyError):
+    pass
+
+if not config_loaded:
+    try:
+        # Try production_config
+        from production_config import config
+        if config_name in config:
+            app.config.from_object(config[config_name])
+            if hasattr(config[config_name], 'init_app'):
+                config[config_name].init_app(app)
+            config_loaded = True
+    except (ImportError, KeyError):
+        pass
+
+if not config_loaded:
     # Fallback to basic config
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'stevedores-dashboard-3.0-secret-key')
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///stevedores.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['TESTING'] = os.environ.get('FLASK_CONFIG') == 'testing'
+    app.config['DEBUG'] = os.environ.get('FLASK_CONFIG') == 'development'
 
 # Database configuration - handled by render_config.py for production
 
 # Fix Supabase postgres:// to postgresql:// if needed
 database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///stevedores.db')
-if database_url.startswith('postgres://'):
+if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
@@ -44,6 +83,28 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
+
+# Initialize database retry logic for production stability
+# Import and initialize after db is created to avoid circular imports
+db_retry_manager = None
+
+def init_db_retry():
+    """Initialize database retry logic after app and db are set up"""
+    global db_retry_manager
+    try:
+        from utils.database_retry import DatabaseConnectionManager
+        db_retry_manager = DatabaseConnectionManager()
+        db_retry_manager.db = db
+        db_retry_manager.app = app
+        db_retry_manager._configure_engine_options()
+        app.logger.info("Database retry logic initialized for maritime operations")
+        return db_retry_manager
+    except Exception as e:
+        app.logger.error(f"Failed to initialize database retry logic: {e}")
+        return None
+
+# Initialize after imports
+db_retry_manager = init_db_retry()
 
 # Exempt API routes from CSRF protection for offline functionality
 @csrf.exempt
@@ -307,16 +368,42 @@ def offline():
     """Offline page when no connectivity"""
     return render_template('offline.html')
 
-# Health check endpoint
+# Health check endpoint with database retry status
 @app.route('/health')
 def health_check():
-    """Basic health check"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
-        'version': '3.0.0',
-        'offline_ready': True
-    }), 200
+    """Comprehensive health check including database retry logic"""
+    from utils.database_retry import database_health_check
+    
+    try:
+        # Get database health status
+        db_health = database_health_check()
+        
+        overall_status = 'healthy'
+        if db_health['status'] != 'healthy':
+            overall_status = 'degraded'
+        
+        return jsonify({
+            'status': overall_status,
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '3.0.0',
+            'offline_ready': True,
+            'database': db_health,
+            'features': {
+                'database_retry': True,
+                'csrf_protection': True,
+                'sqlalchemy_cache': True,
+                'service_worker_auth': True
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': '3.0.0',
+            'error': str(e)
+        }), 503
 
 # Database initialization and demo user creation
 @app.route('/init-database')
@@ -505,11 +592,14 @@ app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
 
-# Exempt document processing, sync, offline dashboard, and auth routes from CSRF for offline functionality
+# Exempt specific routes from CSRF for offline functionality
+# NOTE: Auth routes should NOT be exempted from CSRF for security
 csrf.exempt(document_bp)
-csrf.exempt(auth_bp)
-csrf.exempt(sync_bp)
+csrf.exempt(sync_bp) 
 csrf.exempt(offline_dashboard_bp)
+
+# SECURITY FIX: Remove CSRF exemption from auth routes to prevent CSRF attacks
+# csrf.exempt(auth_bp)  # REMOVED - auth routes should be CSRF protected
 
 
 
