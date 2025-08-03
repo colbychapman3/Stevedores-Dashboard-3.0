@@ -12,13 +12,34 @@ psycopg2-binary==2.9.10
 # Caching - Upstash Redis
 redis==4.6.0
 
-# Security
+# Security - Enhanced maritime security stack
 Werkzeug==2.3.7
 WTForms==3.0.1
+Flask-Talisman==1.1.0  # Security headers (CSP, HSTS, etc.)
+Flask-Limiter==3.5.0   # Rate limiting and brute force protection
+bleach==6.1.0          # HTML sanitization for XSS prevention
+cryptography==45.0.5   # Cryptographic operations for secure features (Phase 4 requirement)
+PyJWT==2.8.0           # JWT token authentication for APIs
+marshmallow==3.21.0    # API request/response validation
+apispec==6.3.0         # OpenAPI specification generation
+python-magic==0.4.27   # File type detection for security
+filetype==1.2.0        # Advanced file type detection
+Pillow==10.1.0         # Image processing and validation
+
+# Phase 4 Maritime Data Security Dependencies
+argon2-cffi==23.1.0    # Argon2 password hashing for maritime user authentication
+bcrypt==4.1.2          # Bcrypt hashing for legacy compatibility
+pynacl==1.5.0          # NaCl cryptographic library for additional encryption options
+
+# Phase 4 Advanced Cryptography Requirements
+cryptography==45.0.5   # Enhanced version for RSA-4096, ECDSA, and hybrid encryption
+pycryptodome==3.20.0   # Additional cryptographic primitives for maritime security
+hashlib-compat==1.0.1  # Enhanced hashing compatibility for legacy systems
 
 # Utilities
 python-dotenv==1.0.0
 click==8.1.7
+python-magic==0.4.27    # File type detection for security
 
 # Production WSGI Server
 gunicorn==21.2.0
