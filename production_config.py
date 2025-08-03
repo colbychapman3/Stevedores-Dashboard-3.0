@@ -6,36 +6,6 @@ Optimized for maritime operations with enhanced security and performance
 import os
 from datetime import timedelta
 
-def get_database_config(environment='production'):
-    """Shared database configuration logic"""
-    if environment == 'production':
-        db_uri = os.environ.get('DATABASE_URL') or 'sqlite:///stevedores_production.db'
-        engine_options = {}
-        if db_uri.startswith('postgresql'):
-            engine_options = {
-                'pool_recycle': 300,
-                'pool_pre_ping': True,
-                'pool_size': 10,
-                'max_overflow': 20,
-            }
-        return {
-            'SQLALCHEMY_DATABASE_URI': db_uri,
-            'SQLALCHEMY_ENGINE_OPTIONS': engine_options,
-            'SQLALCHEMY_TRACK_MODIFICATIONS': False
-        }
-    elif environment == 'testing':
-        return {
-            'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
-            'SQLALCHEMY_ENGINE_OPTIONS': {},
-            'SQLALCHEMY_TRACK_MODIFICATIONS': False
-        }
-    elif environment == 'development':
-        return {
-            'SQLALCHEMY_DATABASE_URI': 'sqlite:///stevedores_dev.db',
-            'SQLALCHEMY_ENGINE_OPTIONS': {},
-            'SQLALCHEMY_TRACK_MODIFICATIONS': True
-        }
-
 class ProductionConfig:
     """Production configuration with security and performance optimizations"""
     
@@ -44,23 +14,26 @@ class ProductionConfig:
     DEBUG = False
     TESTING = False
     
-    # Apply shared database configuration
-    _db_config = get_database_config('production')
-    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
-    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
-    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
+    # Database Configuration
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///stevedores_production.db'
+    
+    # Engine options - will be set by init_app based on database type
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+    }
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Security Configuration
     WTF_CSRF_ENABLED = True
-    WTF_CSRF_TIME_LIMIT = 3600
+    WTF_CSRF_TIME_LIMIT = 3600  # 1 hour
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=8)  # 8-hour work shift
     
     # Performance Configuration
-    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    SEND_FILE_MAX_AGE_DEFAULT = timedelta(days=365)  # Static assets cache
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file upload
     
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
@@ -68,7 +41,7 @@ class ProductionConfig:
     
     # PWA Configuration
     PWA_CACHE_VERSION = '3.0.1'
-    PWA_OFFLINE_TIMEOUT = 30
+    PWA_OFFLINE_TIMEOUT = 30  # seconds
     
     # Maritime-specific Configuration
     MAX_VESSELS_PER_USER = 50
@@ -102,9 +75,6 @@ class ProductionConfig:
     # Rate Limiting
     RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL', 'memory://')
     RATELIMIT_DEFAULT = "100 per hour"
-    RATELIMIT_ROUTES = {
-        'auth.login': '5 per minute',
-    }
     
     # File Upload Configuration
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/stevedores_uploads')
@@ -118,6 +88,22 @@ class ProductionConfig:
     def init_app(app):
         """Initialize application with production settings"""
         
+        # Configure database engine options based on database type
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if db_uri and ('postgresql://' in db_uri or 'postgres://' in db_uri):
+            # PostgreSQL connection pooling
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+                'pool_recycle': 300,
+                'pool_pre_ping': True,
+                'pool_size': 10,
+                'max_overflow': 20,
+            }
+        else:
+            # SQLite - no pooling options
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+                'pool_pre_ping': True,
+            }
+        
         # Configure logging
         import logging
         from logging.handlers import RotatingFileHandler
@@ -128,7 +114,7 @@ class ProductionConfig:
             
             file_handler = RotatingFileHandler(
                 'logs/stevedores_dashboard.log',
-                maxBytes=10240000,
+                maxBytes=10240000,  # 10MB
                 backupCount=10
             )
             file_handler.setFormatter(logging.Formatter(
@@ -145,7 +131,7 @@ class StagingConfig(ProductionConfig):
     """Staging configuration - production-like but with debugging enabled"""
     DEBUG = True
     TESTING = False
-    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False  # For local testing
     
     # Less strict rate limiting for staging
     RATELIMIT_DEFAULT = "1000 per hour"
@@ -158,10 +144,8 @@ class DevelopmentConfig:
     SECRET_KEY = 'dev-secret-key'
     
     # SQLite for development
-    _db_config = get_database_config('development')
-    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
-    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
-    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///stevedores_dev.db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
     
     # Disable security features for development
     WTF_CSRF_ENABLED = False
@@ -182,12 +166,15 @@ class TestingConfig:
     TESTING = True
     DEBUG = True
     SECRET_KEY = 'test-secret-key'
-
-    # Apply shared database configuration
-    _db_config = get_database_config('testing')
-    SQLALCHEMY_DATABASE_URI = _db_config['SQLALCHEMY_DATABASE_URI']
-    SQLALCHEMY_ENGINE_OPTIONS = _db_config['SQLALCHEMY_ENGINE_OPTIONS']
-    SQLALCHEMY_TRACK_MODIFICATIONS = _db_config['SQLALCHEMY_TRACK_MODIFICATIONS']
+    
+    # In-memory database for testing
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # SQLite-specific engine options (no pool settings)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+    }
     
     # Disable security for testing
     WTF_CSRF_ENABLED = False
@@ -196,10 +183,6 @@ class TestingConfig:
     # Fast testing settings
     CACHE_TYPE = 'simple'
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=5)
-
-    @staticmethod
-    def init_app(app):
-        pass
 
 
 # Configuration dictionary

@@ -7,8 +7,16 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash
 
+# Global cache to prevent multiple User model creation
+_user_model_cache = None
+
 def create_user_model(db):
-    """Create User model with database instance to avoid circular imports"""
+    """Create User model with database instance to avoid circular imports and table redefinition"""
+    global _user_model_cache
+    
+    # Return cached model if already created to prevent redefinition
+    if _user_model_cache is not None:
+        return _user_model_cache
     
     class User(db.Model, UserMixin):
         """User model for stevedoring operations"""
@@ -31,6 +39,11 @@ def create_user_model(db):
             """Check if provided password matches hash"""
             return check_password_hash(self.password_hash, password)
         
+        def set_password(self, password):
+            """Set password hash - added for test compatibility"""
+            from werkzeug.security import generate_password_hash
+            self.password_hash = generate_password_hash(password)
+        
         def update_last_login(self):
             """Update last login timestamp"""
             self.last_login = datetime.utcnow()
@@ -47,4 +60,6 @@ def create_user_model(db):
                 'last_login': self.last_login.isoformat() if self.last_login else None
             }
     
+    # Cache the model to prevent redefinition
+    _user_model_cache = User
     return User

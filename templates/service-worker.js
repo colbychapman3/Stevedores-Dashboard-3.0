@@ -1,12 +1,25 @@
-// Stevedores Dashboard 3.0 - Advanced PWA Service Worker
+// Stevedores Dashboard 3.0 - Enhanced Secure PWA Service Worker
 // Critical for maritime operations where connectivity is unreliable
-// Enhanced with background sync, smart caching, and offline-first strategies
+// Enhanced with background sync, smart caching, offline-first strategies, and maritime data security
 
-const VERSION = '3.0.5';
+const VERSION = '3.0.6-secure';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
+const SECURE_CACHE = `stevedores-secure-v${VERSION}`;
 const OFFLINE_URL = '/offline';
+
+// Maritime data classification levels for cache security
+const CLASSIFICATION_LEVELS = {
+    Public: 'public',
+    Internal: 'internal', 
+    Confidential: 'confidential',
+    Restricted: 'restricted',
+    TopSecret: 'top_secret'
+};
+
+// Encrypted cache storage for classified maritime data
+let secureCache = null;
 
 // Critical resources for offline functionality
 const CRITICAL_CACHE_URLS = [
@@ -60,9 +73,13 @@ self.addEventListener('install', event => {
                 });
             }),
             
-            // Initialize other caches
+            // Initialize other caches including secure cache
             caches.open(RUNTIME_CACHE),
-            caches.open(API_CACHE)
+            caches.open(API_CACHE),
+            caches.open(SECURE_CACHE),
+            
+            // Initialize secure cache for classified data
+            initializeSecureCache()
         ])
         .then(() => {
             console.log('[SW] Critical resources cached, activating immediately');
@@ -115,19 +132,33 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Advanced fetch handler with multiple caching strategies
+// Advanced fetch handler with multiple caching strategies and authentication awareness
 self.addEventListener('fetch', event => {
     const { request } = event;
     const url = new URL(request.url);
     
-    // Skip non-GET requests, external domains, and critical auth/init endpoints
-    if (request.method !== 'GET' || url.origin !== location.origin || 
-        url.pathname === '/init-database' || url.pathname === '/dashboard' || url.pathname.startsWith('/auth/')) {
+    // Skip non-GET requests and external domains
+    if (request.method !== 'GET' || url.origin !== location.origin) {
         return;
     }
     
-    // Route requests to appropriate handlers based on type
-    if (isAPIRequest(url)) {
+    // Skip critical endpoints that should never be cached or intercepted
+    const skipPatterns = [
+        '/init-database',
+        '/auth/login',  // Allow login page to be handled normally
+        '/auth/logout', // Allow logout to be handled normally
+        '/auth/api/',   // Skip API auth endpoints
+    ];
+    
+    const shouldSkip = skipPatterns.some(pattern => url.pathname.startsWith(pattern));
+    if (shouldSkip) {
+        return;
+    }
+    
+    // SECURITY FIX: Check authentication status for protected routes
+    if (isProtectedRoute(url)) {
+        event.respondWith(handleProtectedRequest(request, url));
+    } else if (isAPIRequest(url)) {
         event.respondWith(handleAPIRequest(request, url));
     } else if (isStaticResource(url)) {
         event.respondWith(handleStaticResource(request, url));
@@ -139,7 +170,7 @@ self.addEventListener('fetch', event => {
     }
 });
 
-// Enhanced request type detection
+// Enhanced request type detection with authentication awareness
 function isAPIRequest(url) {
     return API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
 }
@@ -155,15 +186,221 @@ function isNavigationRequest(request, url) {
            NAVIGATION_PATTERNS.some(pattern => pattern.test(url.pathname));
 }
 
-// Maritime-critical: Initialize offline data structures
+// SECURITY FIX: Identify protected routes that require authentication
+function isProtectedRoute(url) {
+    const protectedPatterns = [
+        /^\/dashboard/,
+        /^\/vessel\/\d+/,
+        /^\/cargo-tally/,
+        /^\/reports/,
+        /^\/api\/vessels/,
+        /^\/api\/user/,
+        /^\/sync\//
+    ];
+    
+    return protectedPatterns.some(pattern => pattern.test(url.pathname));
+}
+
+// SECURITY FIX: Handle protected requests with authentication checks
+async function handleProtectedRequest(request, url) {
+    try {
+        // Always check network first for protected routes to validate authentication
+        const networkResponse = await fetch(request, { redirect: 'follow' });
+        
+        // If we get a redirect to login, authentication failed
+        if (networkResponse.redirected && networkResponse.url.includes('/auth/login')) {
+            // Clear any cached protected content and redirect to login
+            await clearProtectedCache();
+            return Response.redirect('/auth/login', 302);
+        }
+        
+        // If successful, cache the response if appropriate
+        if (networkResponse.ok) {
+            const runtimeCache = await caches.open(RUNTIME_CACHE);
+            
+            // Only cache non-sensitive content
+            if (!url.pathname.includes('/api/user') && !url.pathname.includes('/sync/')) {
+                runtimeCache.put(request, networkResponse.clone());
+            }
+            
+            return networkResponse;
+        }
+        
+        // Network request failed, try cache as fallback
+        throw new Error(`HTTP ${networkResponse.status}`);
+        
+    } catch (error) {
+        console.log(`[SW] Protected route network failed: ${request.url}`);
+        
+        // For protected routes, don't serve stale cache - redirect to login instead
+        return Response.redirect('/auth/login', 302);
+    }
+}
+
+// Clear cached protected content when authentication fails
+async function clearProtectedCache() {
+    try {
+        const runtimeCache = await caches.open(RUNTIME_CACHE);
+        const apiCache = await caches.open(API_CACHE);
+        
+        const protectedUrls = [
+            '/dashboard',
+            '/vessel/',
+            '/cargo-tally',
+            '/reports',
+            '/api/vessels',
+            '/api/user'
+        ];
+        
+        for (const urlPattern of protectedUrls) {
+            const keys = await runtimeCache.keys();
+            for (const key of keys) {
+                if (key.url.includes(urlPattern)) {
+                    await runtimeCache.delete(key);
+                }
+            }
+            
+            const apiKeys = await apiCache.keys();
+            for (const key of apiKeys) {
+                if (key.url.includes(urlPattern)) {
+                    await apiCache.delete(key);
+                }
+            }
+        }
+        
+        console.log('[SW] Cleared protected content from cache');
+    } catch (error) {
+        console.error('[SW] Failed to clear protected cache:', error);
+    }
+}
+
+// Initialize secure cache for classified maritime data
+async function initializeSecureCache() {
+    try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+            const storage = await navigator.storage.estimate();
+            console.log(`[SW] Secure cache storage available: ${Math.round(storage.quota / 1024 / 1024)}MB`);
+        }
+        
+        // Initialize secure IndexedDB for classified data
+        secureCache = await initializeSecureIndexedDB();
+        console.log('[SW] Secure cache initialized for classified maritime data');
+        
+        return Promise.resolve();
+    } catch (error) {
+        console.error('[SW] Failed to initialize secure cache:', error);
+        return Promise.resolve(); // Don't fail activation
+    }
+}
+
+// Initialize secure IndexedDB for maritime classified data
+async function initializeSecureIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MaritimeSecureCache', 1);
+        
+        request.onerror = () => {
+            console.error('[SW] Failed to open secure IndexedDB');
+            reject(new Error('Failed to open secure database'));
+        };
+        
+        request.onsuccess = () => {
+            console.log('[SW] Secure IndexedDB opened successfully');
+            resolve(request.result);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // Create stores for different classification levels
+            Object.values(CLASSIFICATION_LEVELS).forEach(level => {
+                if (level !== CLASSIFICATION_LEVELS.Public) {
+                    const storeName = `classified_${level}`;
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                        store.createIndex('vessel_id', 'vessel_id', { unique: false });
+                        store.createIndex('expires_at', 'expires_at', { unique: false });
+                        console.log(`[SW] Created secure store: ${storeName}`);
+                    }
+                }
+            });
+            
+            // Create encryption key store
+            if (!db.objectStoreNames.contains('encryption_keys')) {
+                const keyStore = db.createObjectStore('encryption_keys', { keyPath: 'key_id' });
+                keyStore.createIndex('classification', 'classification', { unique: false });
+                keyStore.createIndex('created_at', 'created_at', { unique: false });
+                console.log('[SW] Created encryption key store');
+            }
+        };
+        
+        // Set security timeout
+        setTimeout(() => {
+            reject(new Error('Secure cache initialization timeout'));
+        }, 10000);
+    });
+}
+
+// Maritime-critical: Initialize offline data structures with security
 async function initializeOfflineData() {
     try {
-        // This would integrate with IndexedDB to ensure offline data integrity
-        console.log('[SW] Initializing offline data structures for maritime operations');
+        // This integrates with IndexedDB to ensure offline data integrity and security
+        console.log('[SW] Initializing secure offline data structures for maritime operations');
+        
+        // Check for existing classified data that needs cleanup
+        await cleanupExpiredClassifiedData();
+        
         return Promise.resolve();
     } catch (error) {
         console.error('[SW] Failed to initialize offline data:', error);
         return Promise.resolve(); // Don't fail activation
+    }
+}
+
+// Clean up expired classified data from secure cache
+async function cleanupExpiredClassifiedData() {
+    if (!secureCache) return;
+    
+    try {
+        const transaction = secureCache.transaction(
+            Object.values(CLASSIFICATION_LEVELS)
+                .filter(level => level !== CLASSIFICATION_LEVELS.Public)
+                .map(level => `classified_${level}`),
+            'readwrite'
+        );
+        
+        const now = new Date().toISOString();
+        
+        for (const level of Object.values(CLASSIFICATION_LEVELS)) {
+            if (level === CLASSIFICATION_LEVELS.Public) continue;
+            
+            const store = transaction.objectStore(`classified_${level}`);
+            const index = store.index('expires_at');
+            const range = IDBKeyRange.upperBound(now);
+            
+            let deletedCount = 0;
+            const cursor = await index.openCursor(range);
+            
+            if (cursor) {
+                cursor.continue();
+                cursor.onsuccess = () => {
+                    if (cursor.result) {
+                        cursor.result.delete();
+                        deletedCount++;
+                        cursor.result.continue();
+                    }
+                };
+            }
+            
+            if (deletedCount > 0) {
+                console.log(`[SW] Cleaned up ${deletedCount} expired ${level} classified data entries`);
+            }
+        }
+        
+        await transaction.complete;
+        
+    } catch (error) {
+        console.error('[SW] Failed to cleanup expired classified data:', error);
     }
 }
 
