@@ -3,11 +3,21 @@ Authentication routes for stevedoring operations
 Simple login/logout functionality
 """
 
+from datetime import datetime
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 
 auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/session-status')
+def session_status():
+    """API endpoint to check session validity - returns JSON"""
+    return jsonify({
+        'authenticated': current_user.is_authenticated,
+        'user_id': current_user.id if current_user.is_authenticated else None,
+        'timestamp': datetime.utcnow().isoformat()
+    })
 
 def get_db_and_models():
     """Get database and models - import here to avoid circular imports"""
