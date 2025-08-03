@@ -44,7 +44,14 @@ def get_dashboard_data():
             # Try to get fresh data from server
             try:
                 vessels = Vessel.query.all()
-                vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
+                vessel_list = []
+                for vessel in vessels:
+                    try:
+                        vessel_list.append(vessel.to_dict(include_progress=True))
+                    except Exception as e:
+                        current_app.logger.error(f"Error converting vessel {vessel.id} to dict: {e}")
+                        # Skip problematic vessels rather than crashing the whole dashboard
+                        continue
                 
                 # Cache the fresh data
                 offline_data_manager.cache_vessel_data(vessel_list, "server")
@@ -313,7 +320,13 @@ def refresh_cache():
         if cache_type in ['all', 'vessels']:
             try:
                 vessels = Vessel.query.all()
-                vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
+                vessel_list = []
+                for vessel in vessels:
+                    try:
+                        vessel_list.append(vessel.to_dict(include_progress=True))
+                    except Exception as e:
+                        current_app.logger.error(f"Error converting vessel {vessel.id} to dict in cache refresh: {e}")
+                        continue
                 
                 if offline_data_manager.cache_vessel_data(vessel_list, "server"):
                     refreshed.append('vessels')
