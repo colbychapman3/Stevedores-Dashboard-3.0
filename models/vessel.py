@@ -131,9 +131,8 @@ def create_vessel_model(db):
                     return None
                 try:
                     return json.loads(json_str)
-                except (json.JSONDecodeError, TypeError) as e:
-                    # Log the error but don't crash the whole operation
-                    print(f"Warning: Invalid JSON data in vessel {getattr(self, 'id', 'unknown')}: {e}")
+                except (json.JSONDecodeError, TypeError):
+                    # Return None for invalid JSON data, don't crash the whole operation
                     return None
             
             data = {

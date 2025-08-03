@@ -88,17 +88,10 @@ def dashboard():
         # Try to get vessels from database
         vessels = Vessel.query.all()
         
-        # Cache vessel data for offline use with error handling
+        # Cache vessel data for offline use
         from utils.offline_data_manager import OfflineDataManager
         offline_manager = OfflineDataManager()
-        vessel_list = []
-        for vessel in vessels:
-            try:
-                vessel_list.append(vessel.to_dict(include_progress=True))
-            except Exception as e:
-                logger.error(f"Error converting vessel {vessel.id} to dict: {e}")
-                # Continue with other vessels, don't let one bad vessel break everything
-                continue
+        vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
         offline_manager.cache_vessel_data(vessel_list, "server")
         
         return render_template('dashboard_offline.html', vessels=vessels)
@@ -365,28 +358,10 @@ def api_vessels_summary():
     """Get vessel summary for dashboard"""
     try:
         vessels = Vessel.query.all()
-        vessel_list = []
-        for vessel in vessels:
-            try:
-                vessel_list.append(vessel.to_dict())
-            except Exception as e:
-                logger.error(f"Error converting vessel {vessel.id} to dict in API: {e}")
-                # Add basic vessel info even if full conversion fails
-                vessel_list.append({
-                    'id': vessel.id,
-                    'name': vessel.name,
-                    'status': vessel.status,
-                    'shipping_line': getattr(vessel, 'shipping_line', 'Unknown'),
-                    'vessel_type': getattr(vessel, 'vessel_type', 'Unknown'),
-                    'progress_percentage': getattr(vessel, 'progress_percentage', 0),
-                    'error': 'Data conversion error'
-                })
-                continue
-                
         summary = {
             'total_vessels': len(vessels),
             'active_vessels': len([v for v in vessels if v.status in ['arrived', 'berthed', 'operations_active']]),
-            'vessels': vessel_list,
+            'vessels': [v.to_dict() for v in vessels],
             'timestamp': datetime.utcnow().isoformat()
         }
         return jsonify(summary)
