@@ -243,40 +243,89 @@
                         <label for="vesselName" class="block text-sm font-medium text-gray-700 mb-2">Vessel Name *</label>
                         <input type="text" id="vesselName" name="vesselName" required
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Enter vessel name">
+                               placeholder="e.g., Donington 38">
+                    </div>
+                    
+                    <div>
+                        <label for="shippingLine" class="block text-sm font-medium text-gray-700 mb-2">Shipping Line *</label>
+                        <select id="shippingLine" name="shippingLine" required onchange="updateVesselTypeOptions()"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Shipping Line</option>
+                            <option value="K-line">K-line</option>
+                            <option value="Grimaldi">Grimaldi</option>
+                            <option value="Glovis">Glovis</option>
+                            <option value="MOL">MOL</option>
+                        </select>
                     </div>
                     
                     <div>
                         <label for="vesselType" class="block text-sm font-medium text-gray-700 mb-2">Vessel Type *</label>
                         <select id="vesselType" name="vesselType" required
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select vessel type</option>
-                            <option value="Car Carrier">Car Carrier</option>
-                            <option value="RoRo">RoRo (Roll-on/Roll-off)</option>
-                            <option value="Container Ship">Container Ship</option>
-                            <option value="Bulk Carrier">Bulk Carrier</option>
-                            <option value="General Cargo">General Cargo</option>
+                            <option value="">Select Vessel Type</option>
+                            <option value="Auto Only">Auto Only</option>
+                            <option value="Heavy Only" class="k-line-only" style="display: none;">Heavy Only</option>
+                            <option value="Auto + Heavy" class="k-line-only" style="display: none;">Auto + Heavy</option>
                         </select>
                     </div>
                     
                     <div>
-                        <label for="port" class="block text-sm font-medium text-gray-700 mb-2">Port of Call *</label>
-                        <select id="port" name="port" required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select port</option>
-                            <option value="Port Newark">Port Newark</option>
-                            <option value="Port Elizabeth">Port Elizabeth</option>
-                            <option value="Port of Baltimore">Port of Baltimore</option>
-                            <option value="Port of Savannah">Port of Savannah</option>
-                            <option value="Port of Charleston">Port of Charleston</option>
-                            <option value="Other">Other</option>
-                        </select>
+                        <label for="port" class="block text-sm font-medium text-gray-700 mb-2">Port</label>
+                        <input type="text" id="port" name="port" readonly
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                               value="Colonel's Island">
                     </div>
                     
                     <div>
-                        <label for="operationDate" class="block text-sm font-medium text-gray-700 mb-2">Operation Date *</label>
-                        <input type="date" id="operationDate" name="operationDate" required
+                        <label for="operationStartDate" class="block text-sm font-medium text-gray-700 mb-2">Operation Start Date *</label>
+                        <input type="date" id="operationStartDate" name="operationStartDate" required
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="operationEndDate" class="block text-sm font-medium text-gray-700 mb-2">Operation End Date *</label>
+                        <input type="date" id="operationEndDate" name="operationEndDate" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label for="stevedoringCompany" class="block text-sm font-medium text-gray-700 mb-2">Stevedoring Company</label>
+                        <input type="text" id="stevedoringCompany" name="stevedoringCompany" readonly
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                               value="APS Stevedoring">
+                    </div>
+                    
+                    <div>
+                        <label for="operationType" class="block text-sm font-medium text-gray-700 mb-2">Operation Type *</label>
+                        <select id="operationType" name="operationType" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Operation</option>
+                            <option value="Discharge Only">Discharge Only</option>
+                            <option value="Loading Only">Loading Only</option>
+                            <option value="Discharge + Loadback">Discharge + Loadback</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="berthAssignment" class="block text-sm font-medium text-gray-700 mb-2">Berth Assignment *</label>
+                        <select id="berthAssignment" name="berthAssignment" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Berth</option>
+                            <option value="Berth 1">Berth 1</option>
+                            <option value="Berth 2">Berth 2</option>
+                            <option value="Berth 3">Berth 3</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="operationsManager" class="block text-sm font-medium text-gray-700 mb-2">Operations Manager *</label>
+                        <select id="operationsManager" name="operationsManager" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Operations Manager</option>
+                            <option value="Jonathan">Jonathan</option>
+                            <option value="Joe">Joe</option>
+                            <option value="Mark">Mark</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -288,36 +337,101 @@
                 </div>
             </div>
 
-            <!-- Step 2: Cargo Configuration -->
+            <!-- Step 2: Stevedore Team Assignment -->
             <div id="step2" class="wizard-step hidden">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-boxes text-blue-600 mr-3"></i>Step 2: Cargo Configuration
+                    <i class="fas fa-users text-blue-600 mr-3"></i>Step 2: Stevedore Team Assignment
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="totalAutomobiles" class="block text-sm font-medium text-gray-700 mb-2">Total Automobiles</label>
-                        <input type="number" id="totalAutomobiles" name="totalAutomobiles" min="0"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Enter total vehicle count">
+                <!-- Document Auto-fill Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-file-upload text-blue-600 mr-2"></i>Auto-fill from Document
+                    </h3>
+                    <p class="text-blue-800 text-sm mb-4">Upload a document or paste text to automatically populate team assignment information.</p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- File Upload -->
+                        <div class="upload-zone bg-white border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+                            <i class="fas fa-cloud-upload-alt text-blue-500 text-3xl mb-3"></i>
+                            <p class="text-blue-800 font-medium mb-2">Drop document here or click to browse</p>
+                            <p class="text-blue-600 text-xs mb-3">Supports TXT, CSV files</p>
+                            <input type="file" id="documentUploadStep2" name="documentUploadStep2" 
+                                   accept=".txt,.csv" class="hidden"
+                                   onchange="handleDocumentUpload(event, 2)">
+                            <button type="button" 
+                                    onclick="document.getElementById('documentUploadStep2').click()"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                Choose File
+                            </button>
+                        </div>
+                        
+                        <!-- Text Paste -->
+                        <div class="bg-white rounded-lg border border-blue-200 p-4">
+                            <label for="documentTextStep2" class="block text-blue-900 font-medium mb-2">Or paste document text:</label>
+                            <textarea id="documentTextStep2" rows="4" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Paste team assignment document text here..."></textarea>
+                            <button type="button" id="processTextBtnStep2"
+                                    class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                <i class="fas fa-magic mr-1"></i>Process Text
+                            </button>
+                        </div>
                     </div>
                     
-                    <div>
-                        <label for="heavyEquipment" class="block text-sm font-medium text-gray-700 mb-2">Heavy Equipment</label>
-                        <input type="number" id="heavyEquipment" name="heavyEquipment" min="0"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Trucks, machinery, etc.">
+                    <!-- Upload Status -->
+                    <div id="uploadStatusStep2" class="hidden mt-3 p-2 rounded text-sm"></div>
+                </div>
+                
+                <!-- Auto Operations Team Section -->
+                <div id="autoOperationsSection" class="mb-8">
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-car text-green-600 mr-2"></i>Auto Operations Team
+                        </h3>
+                        
+                        <div class="mb-4">
+                            <label for="autoOperationsMembers" class="block text-sm font-medium text-gray-700 mb-2">Number of Members</label>
+                            <select id="autoOperationsMembers" name="autoOperationsMembers" onchange="updateTeamMembers('autoOperations')"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
+                        </div>
+                        
+                        <div id="autoOperationsTeamMembers" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Dynamic team member fields will be added here -->
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label for="cargoType" class="block text-sm font-medium text-gray-700 mb-2">Primary Cargo Type</label>
-                        <select id="cargoType" name="cargoType"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            <option value="automobile">Automobiles</option>
-                            <option value="mixed">Mixed Cargo</option>
-                            <option value="heavy_equipment">Heavy Equipment</option>
-                            <option value="containers">Containers</option>
-                        </select>
+                </div>
+                
+                <!-- High Heavy Team Section (only shown for K-line) -->
+                <div id="highHeavySection" class="mb-8" style="display: none;">
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-truck text-orange-600 mr-2"></i>High Heavy Team
+                        </h3>
+                        
+                        <div class="mb-4">
+                            <label for="highHeavyMembers" class="block text-sm font-medium text-gray-700 mb-2">Number of Members</label>
+                            <select id="highHeavyMembers" name="highHeavyMembers" onchange="updateTeamMembers('highHeavy')"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
+                        </div>
+                        
+                        <div id="highHeavyTeamMembers" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Dynamic team member fields will be added here -->
+                        </div>
                     </div>
                 </div>
                 
@@ -333,37 +447,157 @@
                 </div>
             </div>
 
-            <!-- Step 3: Operational Parameters -->
+            <!-- Step 3: Cargo Configuration -->
             <div id="step3" class="wizard-step hidden">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-users text-blue-600 mr-3"></i>Step 3: Operational Parameters
+                    <i class="fas fa-boxes text-blue-600 mr-3"></i>Step 3: Cargo Configuration
                 </h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="shiftStart" class="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
-                        <input type="time" id="shiftStart" name="shiftStart"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <!-- Document Auto-fill Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-file-upload text-blue-600 mr-2"></i>Auto-fill from Document
+                    </h3>
+                    <p class="text-blue-800 text-sm mb-4">Upload a document or paste text to automatically populate cargo configuration.</p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- File Upload -->
+                        <div class="upload-zone bg-white border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+                            <i class="fas fa-cloud-upload-alt text-blue-500 text-3xl mb-3"></i>
+                            <p class="text-blue-800 font-medium mb-2">Drop document here or click to browse</p>
+                            <p class="text-blue-600 text-xs mb-3">Supports TXT, CSV files</p>
+                            <input type="file" id="documentUploadStep3" name="documentUploadStep3" 
+                                   accept=".txt,.csv" class="hidden"
+                                   onchange="handleDocumentUpload(event, 3)">
+                            <button type="button" 
+                                    onclick="document.getElementById('documentUploadStep3').click()"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                Choose File
+                            </button>
+                        </div>
+                        
+                        <!-- Text Paste -->
+                        <div class="bg-white rounded-lg border border-blue-200 p-4">
+                            <label for="documentTextStep3" class="block text-blue-900 font-medium mb-2">Or paste document text:</label>
+                            <textarea id="documentTextStep3" rows="4" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Paste cargo configuration document text here..."></textarea>
+                            <button type="button" id="processTextBtnStep3"
+                                    class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                <i class="fas fa-magic mr-1"></i>Process Text
+                            </button>
+                        </div>
                     </div>
                     
-                    <div>
-                        <label for="shiftEnd" class="block text-sm font-medium text-gray-700 mb-2">Shift End Time</label>
-                        <input type="time" id="shiftEnd" name="shiftEnd"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <!-- Upload Status -->
+                    <div id="uploadStatusStep3" class="hidden mt-3 p-2 rounded text-sm"></div>
+                </div>
+
+                <!-- Discharge Section (shown for Discharge Only and Discharge + Loadback) -->
+                <div id="dischargeSection" class="mb-8">
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-truck-loading text-red-600 mr-2"></i>Discharge Configuration
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="dischargeTotalAutos" class="block text-sm font-medium text-gray-700 mb-2">Total Autos</label>
+                                <input type="number" id="dischargeTotalAutos" name="dischargeTotalAutos" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter total automobiles">
+                            </div>
+                            
+                            <div id="dischargeHeavyContainer" style="display: none;">
+                                <label for="dischargeHeavy" class="block text-sm font-medium text-gray-700 mb-2">Heavy Equipment</label>
+                                <input type="number" id="dischargeHeavy" name="dischargeHeavy" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter heavy equipment count">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <button type="button" onclick="addVehicleType('discharge')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>Add Vehicle Type
+                            </button>
+                        </div>
+                        
+                        <div id="dischargeVehicleTypes" class="space-y-4">
+                            <!-- Dynamic vehicle type fields will be added here -->
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label for="driversAssigned" class="block text-sm font-medium text-gray-700 mb-2">Drivers Assigned</label>
-                        <input type="number" id="driversAssigned" name="driversAssigned" min="0"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Number of drivers">
+                </div>
+
+                <!-- Loadback Section (only shown for Discharge + Loadback) -->
+                <div id="loadbackSection" class="mb-8" style="display: none;">
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-truck-loading text-blue-600 mr-2"></i>Loadback Configuration
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="loadbackTotalAutos" class="block text-sm font-medium text-gray-700 mb-2">Total Autos</label>
+                                <input type="number" id="loadbackTotalAutos" name="loadbackTotalAutos" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter total automobiles">
+                            </div>
+                            
+                            <div id="loadbackHeavyContainer" style="display: none;">
+                                <label for="loadbackHeavy" class="block text-sm font-medium text-gray-700 mb-2">Heavy Equipment</label>
+                                <input type="number" id="loadbackHeavy" name="loadbackHeavy" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter heavy equipment count">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <button type="button" onclick="addVehicleType('loadback')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>Add Vehicle Type
+                            </button>
+                        </div>
+                        
+                        <div id="loadbackVehicleTypes" class="space-y-4">
+                            <!-- Dynamic vehicle type fields will be added here -->
+                        </div>
                     </div>
-                    
-                    <div>
-                        <label for="ticoVehicles" class="block text-sm font-medium text-gray-700 mb-2">TICO Vehicles Needed</label>
-                        <input type="number" id="ticoVehicles" name="ticoVehicles" min="0"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                               placeholder="Vans/station wagons for transport">
+                </div>
+
+                <!-- Loading Section (shown for Loading Only) -->
+                <div id="loadingSection" class="mb-8" style="display: none;">
+                    <div class="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                            <i class="fas fa-truck-loading text-green-600 mr-2"></i>Loading Configuration
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="loadingTotalAutos" class="block text-sm font-medium text-gray-700 mb-2">Total Autos</label>
+                                <input type="number" id="loadingTotalAutos" name="loadingTotalAutos" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter total automobiles">
+                            </div>
+                            
+                            <div id="loadingHeavyContainer" style="display: none;">
+                                <label for="loadingHeavy" class="block text-sm font-medium text-gray-700 mb-2">Heavy Equipment</label>
+                                <input type="number" id="loadingHeavy" name="loadingHeavy" min="0"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                       placeholder="Enter heavy equipment count">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <button type="button" onclick="addVehicleType('loading')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                                <i class="fas fa-plus mr-2"></i>Add Vehicle Type
+                            </button>
+                        </div>
+                        
+                        <div id="loadingVehicleTypes" class="space-y-4">
+                            <!-- Dynamic vehicle type fields will be added here -->
+                        </div>
                     </div>
                 </div>
                 
@@ -379,14 +613,154 @@
                 </div>
             </div>
 
-            <!-- Step 4: Review and Submit -->
+            <!-- Step 4: Operational Parameters -->
             <div id="step4" class="wizard-step hidden">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-check text-blue-600 mr-3"></i>Step 4: Review & Submit
+                    <i class="fas fa-cog text-blue-600 mr-3"></i>Step 4: Operational Parameters
                 </h2>
                 
-                <div id="reviewSummary" class="bg-gray-50 rounded-lg p-6 mb-6">
-                    <!-- Summary will be populated by JavaScript -->
+                <!-- Document Auto-fill Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-file-upload text-blue-600 mr-2"></i>Auto-fill from Document
+                    </h3>
+                    <p class="text-blue-800 text-sm mb-4">Upload a document or paste text to automatically populate operational parameters.</p>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- File Upload -->
+                        <div class="upload-zone bg-white border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+                            <i class="fas fa-cloud-upload-alt text-blue-500 text-3xl mb-3"></i>
+                            <p class="text-blue-800 font-medium mb-2">Drop document here or click to browse</p>
+                            <p class="text-blue-600 text-xs mb-3">Supports TXT, CSV files</p>
+                            <input type="file" id="documentUploadStep4" name="documentUploadStep4" 
+                                   accept=".txt,.csv" class="hidden"
+                                   onchange="handleDocumentUpload(event, 4)">
+                            <button type="button" 
+                                    onclick="document.getElementById('documentUploadStep4').click()"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                Choose File
+                            </button>
+                        </div>
+                        
+                        <!-- Text Paste -->
+                        <div class="bg-white rounded-lg border border-blue-200 p-4">
+                            <label for="documentTextStep4" class="block text-blue-900 font-medium mb-2">Or paste document text:</label>
+                            <textarea id="documentTextStep4" rows="4" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                                      placeholder="Paste operational parameters document text here..."></textarea>
+                            <button type="button" id="processTextBtnStep4"
+                                    class="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm">
+                                <i class="fas fa-magic mr-1"></i>Process Text
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Status -->
+                    <div id="uploadStatusStep4" class="hidden mt-3 p-2 rounded text-sm"></div>
+                </div>
+
+                <!-- General Operations Section -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-clock text-blue-600 mr-2"></i>General Operations
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label for="totalDrivers" class="block text-sm font-medium text-gray-700 mb-2">Total Drivers</label>
+                            <input type="number" id="totalDrivers" name="totalDrivers" min="0"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Enter total drivers">
+                        </div>
+                        
+                        <div>
+                            <label for="shiftStartTime" class="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
+                            <input type="time" id="shiftStartTime" name="shiftStartTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shiftEndTime" class="block text-sm font-medium text-gray-700 mb-2">Shift End Time</label>
+                            <input type="time" id="shiftEndTime" name="shiftEndTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shipStartTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Start Time</label>
+                            <input type="time" id="shipStartTime" name="shipStartTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shipCompleteTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Complete Time</label>
+                            <input type="time" id="shipCompleteTime" name="shipCompleteTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="numberOfBreaks" class="block text-sm font-medium text-gray-700 mb-2">Number of Breaks</label>
+                            <input type="number" id="numberOfBreaks" name="numberOfBreaks" min="0"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="1 break = 60 minutes">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label for="targetCompletion" class="block text-sm font-medium text-gray-700 mb-2">Target Completion</label>
+                            <input type="datetime-local" id="targetCompletion" name="targetCompletion"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TICO Transportation Section -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-van-shuttle text-green-600 mr-2"></i>TICO Transportation
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <label for="numberOfVans" class="block text-sm font-medium text-gray-700 mb-2">Number of Vans</label>
+                            <input type="number" id="numberOfVans" name="numberOfVans" min="0" onchange="updateVanList()"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Vans hold 7 drivers">
+                        </div>
+                        
+                        <div>
+                            <label for="numberOfWagons" class="block text-sm font-medium text-gray-700 mb-2">Number of Wagons</label>
+                            <input type="number" id="numberOfWagons" name="numberOfWagons" min="0" onchange="updateWagonList()"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Wagons hold 5 drivers">
+                        </div>
+                        
+                        <div>
+                            <label for="numberOfLowDecks" class="block text-sm font-medium text-gray-700 mb-2">Number of Low Decks</label>
+                            <input type="number" id="numberOfLowDecks" name="numberOfLowDecks" min="0" max="13" onchange="checkLowDeckWarning()"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Range: 0-13">
+                        </div>
+                    </div>
+                    
+                    <div id="lowDeckWarning" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded mb-6">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        <strong>Warning:</strong> Low decks require at least one wagon for access.
+                    </div>
+                    
+                    <!-- Van Details -->
+                    <div id="vanDetailsSection" class="mb-6" style="display: none;">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3">Van Details</h4>
+                        <div id="vanDetailsList" class="space-y-3">
+                            <!-- Dynamic van detail fields will be added here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Wagon Details -->
+                    <div id="wagonDetailsSection" class="mb-6" style="display: none;">
+                        <h4 class="text-md font-semibold text-gray-800 mb-3">Wagon Details</h4>
+                        <div id="wagonDetailsList" class="space-y-3">
+                            <!-- Dynamic wagon detail fields will be added here -->
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="flex justify-between">
