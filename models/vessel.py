@@ -125,6 +125,17 @@ def create_vessel_model(db):
             """Convert vessel to dictionary for API responses"""
             import json
             
+            # Safe JSON parsing with error handling
+            def safe_json_loads(json_str):
+                if not json_str:
+                    return None
+                try:
+                    return json.loads(json_str)
+                except (json.JSONDecodeError, TypeError) as e:
+                    # Log the error but don't crash the whole operation
+                    print(f"Warning: Invalid JSON data in vessel {getattr(self, 'id', 'unknown')}: {e}")
+                    return None
+            
             data = {
                 'id': self.id,
                 'name': self.name,
@@ -137,8 +148,8 @@ def create_vessel_model(db):
                 'operation_type': self.operation_type,
                 'berth_assignment': self.berth_assignment,
                 'operations_manager': self.operations_manager,
-                'team_assignments': json.loads(self.team_assignments) if self.team_assignments else None,
-                'cargo_configuration': json.loads(self.cargo_configuration) if self.cargo_configuration else None,
+                'team_assignments': safe_json_loads(self.team_assignments),
+                'cargo_configuration': safe_json_loads(self.cargo_configuration),
                 'total_drivers': self.total_drivers,
                 'shift_start_time': self.shift_start_time.isoformat() if self.shift_start_time else None,
                 'shift_end_time': self.shift_end_time.isoformat() if self.shift_end_time else None,
@@ -149,8 +160,8 @@ def create_vessel_model(db):
                 'number_of_vans': self.number_of_vans,
                 'number_of_wagons': self.number_of_wagons,
                 'number_of_low_decks': self.number_of_low_decks,
-                'van_details': json.loads(self.van_details) if self.van_details else None,
-                'wagon_details': json.loads(self.wagon_details) if self.wagon_details else None,
+                'van_details': safe_json_loads(self.van_details),
+                'wagon_details': safe_json_loads(self.wagon_details),
                 'status': self.status,
                 'current_berth': self.current_berth,
                 'wizard_completed': self.wizard_completed,
