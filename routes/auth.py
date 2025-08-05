@@ -19,6 +19,28 @@ def session_status():
         'timestamp': datetime.utcnow().isoformat()
     })
 
+@auth_bp.route('/health')
+def auth_health():
+    """Auth system health check - simple endpoint for testing"""
+    try:
+        db, User = get_db_and_models()
+        user_count = User.query.count()
+        return jsonify({
+            'status': 'healthy',
+            'auth_system': 'operational',
+            'database_connected': True,
+            'user_count': user_count,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'auth_system': 'degraded',
+            'database_connected': False,
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
 def get_db_and_models():
     """Get database and models - import here to avoid circular imports"""
     from app import db
