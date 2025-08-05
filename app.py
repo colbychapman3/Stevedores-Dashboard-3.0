@@ -31,6 +31,7 @@ except ImportError:
 # Initialize Flask app
 app = Flask(__name__)
 
+<<<<<<< HEAD
 # Configuration - Support multiple config sources
 config_name = os.environ.get('FLASK_CONFIG', 'development')
 config_loaded = False
@@ -64,6 +65,61 @@ if not config_loaded:
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['TESTING'] = os.environ.get('FLASK_CONFIG') == 'testing'
     app.config['DEBUG'] = os.environ.get('FLASK_CONFIG') == 'development'
+=======
+# FORCE CACHE REFRESH: Production build version identifier
+DEPLOYMENT_VERSION = "3.0.3-AUTH-DEBUG-20250805"
+print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
+
+# Early logging setup for configuration debugging
+logging.basicConfig(level=logging.INFO)
+config_logger = logging.getLogger(__name__)
+
+# Configuration - Standardized precedence: env -> render_config -> production_config -> fallback
+config_name = os.environ.get('FLASK_CONFIG', 'render')
+config_loaded = False
+
+# Try render_config first (preferred for Render deployment)
+if not config_loaded:
+    try:
+        from render_config import config
+        app.config.from_object(config[config_name])
+        config[config_name].init_app(app)
+        config_loaded = True
+        config_logger.info(f"✅ Loaded render_config: {config_name}")
+    except ImportError:
+        config_logger.info("⚠️  render_config not available, trying production_config")
+
+# Fallback to production_config
+if not config_loaded:
+    try:
+        from production_config import config
+        fallback_name = 'production' if config_name in ['render', 'production'] else config_name
+        if fallback_name in config:
+            app.config.from_object(config[fallback_name])
+            config[fallback_name].init_app(app)
+            config_loaded = True
+            config_logger.info(f"✅ Loaded production_config: {fallback_name}")
+        else:
+            config_logger.warning(f"⚠️  Config '{fallback_name}' not found in production_config")
+    except ImportError:
+        config_logger.info("⚠️  production_config not available, using basic fallback")
+    except Exception as e:
+        config_logger.error(f"❌ Error loading production_config: {e}")
+
+# Final fallback to basic configuration
+if not config_loaded:
+    # SECURITY FIX: Remove hardcoded SECRET_KEY fallback - require environment variable
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        raise ValueError("SECRET_KEY environment variable is required for security. Set SECRET_KEY in your environment.")
+    
+    app.config.update({
+        'SECRET_KEY': secret_key,
+        'SQLALCHEMY_DATABASE_URI': os.environ.get('DATABASE_URL', 'sqlite:///stevedores.db'),
+        'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        'DEBUG': os.environ.get('FLASK_ENV', 'production') == 'development'
+    })
+    config_logger.info("✅ Loaded basic fallback configuration with secure SECRET_KEY")
 
 # Database configuration - handled by render_config.py for production
 
@@ -72,11 +128,18 @@ database_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///stevedores.d
 if database_url and database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+elif not database_url:
+    # Set fallback database URL if none provided
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///stevedores.db'
+    config_logger.info("⚠️  No database URL provided, using SQLite fallback")
 
 # SQLAlchemy settings handled by render_config.py
 
-# Security configurations
-app.config['WTF_CSRF_TIME_LIMIT'] = None
+# Security configurations - Fixed: Don't override production CSRF timeout
+# app.config['WTF_CSRF_TIME_LIMIT'] = None  # REMOVED: This was overriding production config!
+# Only disable CSRF timeout in development/testing, production should use config file setting
+if app.config.get('DEBUG', False) or app.config.get('TESTING', False):
+    app.config['WTF_CSRF_TIME_LIMIT'] = None  # Only for development
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 
 # Initialize extensions
@@ -132,9 +195,12 @@ logging.basicConfig(level=logging.INFO)
 logger = app.logger
 
 # Import models after db initialization using factory functions
+# DEBUGGING: Force production cache refresh - these are the ONLY model imports
+print("🔍 DEBUG: Loading models from factory functions...")
 from models.user import create_user_model
 from models.vessel import create_vessel_model  
 from models.cargo_tally import create_cargo_tally_model
+print("🔍 DEBUG: Model imports completed successfully")
 
 # Create model classes
 User = create_user_model(db)
@@ -443,17 +509,17 @@ def init_database():
         logger.error(f"Database initialization error: {e}")
         return False
 
-# Database initialization and demo user creation
-@app.route('/init-database')
-def init_database_endpoint():
-    """Initialize database and create all demo users"""
+# Database initialization function (used by wsgi.py)
+def init_database():
+    """Initialize database and create demo users - used by production startup"""
     try:
         # Create all tables
         db.create_all()
+        logger.info("Database tables created successfully")
         
         users_created = []
         
-        # Create simple demo user
+        # Create simple demo user if it doesn't exist
         if not User.query.filter_by(email='demo@maritime.test').first():
             demo_user = User(
                 email='demo@maritime.test',
@@ -463,18 +529,34 @@ def init_database_endpoint():
             )
             db.session.add(demo_user)
             users_created.append('demo@maritime.test')
+            logger.info("Demo user created: demo@maritime.test")
         
         db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Database initialized successfully',
-            'users_created': users_created,
-            'login_credentials': 'demo@maritime.test / demo123'
-        })
+        logger.info(f"Database initialization completed. Users created: {users_created}")
+        return True
         
     except Exception as e:
         logger.error(f"Database initialization error: {e}")
+        return False
+
+# Database initialization and demo user creation
+@app.route('/init-database')
+def init_database_endpoint():
+    """Initialize database and create all demo users - HTTP endpoint"""
+    try:
+        success = init_database()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Database initialized successfully',
+                'login_credentials': 'demo@maritime.test / demo123'
+            })
+        else:
+            return jsonify({'error': 'Database initialization failed - check logs'}), 500
+        
+    except Exception as e:
+        logger.error(f"Database initialization endpoint error: {e}")
         return jsonify({'error': f'Database initialization failed: {str(e)}'}), 500
 
 # API Routes
@@ -639,6 +721,40 @@ csrf.exempt(offline_dashboard_bp)
 # SECURITY FIX: Remove CSRF exemption from auth routes to prevent CSRF attacks
 # csrf.exempt(auth_bp)  # REMOVED - auth routes should be CSRF protected
 
+
+
+# Database initialization function (was missing - causing startup failure)
+def init_database():
+    """Initialize database and create demo users for production deployment
+    
+    This function was missing but called by wsgi.py and test files,
+    causing ImportError on production startup.
+    """
+    try:
+        with app.app_context():
+            # Create all tables
+            db.create_all()
+            logger.info("Database tables created successfully")
+            
+            # Create demo user if not exists
+            if not User.query.filter_by(email='demo@maritime.test').first():
+                demo_user = User(
+                    email='demo@maritime.test',
+                    username='demo_user',
+                    password_hash=generate_password_hash('demo123'),
+                    is_active=True
+                )
+                db.session.add(demo_user)
+                db.session.commit()
+                logger.info("Demo user created: demo@maritime.test / demo123")
+            else:
+                logger.info("Demo user already exists")
+            
+            return True
+            
+    except Exception as e:
+        logger.error(f"Database initialization error: {e}")
+        return False
 
 
 if __name__ == '__main__':

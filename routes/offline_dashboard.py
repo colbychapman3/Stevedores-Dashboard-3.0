@@ -5,9 +5,27 @@ Provides dashboard functionality with offline data support
 
 import json
 from datetime import datetime
+from functools import wraps
 from flask import Blueprint, request, jsonify, render_template, current_app
 from flask_login import login_required, current_user
 from utils.offline_data_manager import OfflineDataManager, DataStatus
+
+def api_login_required(f):
+    """
+    Custom decorator for API endpoints that returns JSON instead of HTML redirects
+    Prevents the authentication confusion that causes phantom 503 errors
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return jsonify({
+                'success': False,
+                'error': 'Authentication required - please log in to continue',
+                'redirect': '/auth/login',
+                'auth_required': True
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Create blueprint
 offline_dashboard_bp = Blueprint('offline_dashboard', __name__)
@@ -16,7 +34,7 @@ offline_dashboard_bp = Blueprint('offline_dashboard', __name__)
 offline_data_manager = OfflineDataManager()
 
 @offline_dashboard_bp.route('/dashboard-data', methods=['GET'])
-@login_required
+@api_login_required
 def get_dashboard_data():
     """Get dashboard data with offline support"""
     try:
@@ -35,7 +53,7 @@ def get_dashboard_data():
                 'mode': 'offline',
                 'vessels': vessel_data['vessels'],
                 'summary': dashboard_summary,
-                'data_status': vessel_data['status'].value,
+                'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                 'last_updated': vessel_data['last_updated'],
                 'timestamp': datetime.utcnow().isoformat()
             })
@@ -44,7 +62,14 @@ def get_dashboard_data():
             # Try to get fresh data from server
             try:
                 vessels = Vessel.query.all()
-                vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
+                vessel_list = []
+                for vessel in vessels:
+                    try:
+                        vessel_list.append(vessel.to_dict(include_progress=True))
+                    except Exception as e:
+                        current_app.logger.error(f"Error converting vessel {vessel.id} to dict: {e}")
+                        # Skip problematic vessels rather than crashing the whole dashboard
+                        continue
                 
                 # Cache the fresh data
                 offline_data_manager.cache_vessel_data(vessel_list, "server")
@@ -77,7 +102,7 @@ def get_dashboard_data():
                     'mode': 'offline_fallback',
                     'vessels': vessel_data['vessels'],
                     'summary': dashboard_summary,
-                    'data_status': vessel_data['status'].value,
+                    'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                     'last_updated': vessel_data['last_updated'],
                     'timestamp': datetime.utcnow().isoformat(),
                     'error': 'Server unavailable, using cached data'
@@ -91,7 +116,7 @@ def get_dashboard_data():
         }), 500
 
 @offline_dashboard_bp.route('/vessel/<vessel_id>/data', methods=['GET'])
-@login_required
+@api_login_required
 def get_vessel_data(vessel_id):
     """Get individual vessel data with offline support"""
     try:
@@ -136,7 +161,7 @@ def get_vessel_data(vessel_id):
                 'vessel': vessel,
                 'cargo_tallies': tally_data['tallies'],
                 'is_offline_vessel': False,
-                'data_status': vessel_data['status'].value,
+                'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                 'timestamp': datetime.utcnow().isoformat()
             })
         
@@ -193,7 +218,7 @@ def get_vessel_data(vessel_id):
         }), 500
 
 @offline_dashboard_bp.route('/vessel/<vessel_id>/update-progress', methods=['POST'])
-@login_required
+@api_login_required
 def update_vessel_progress(vessel_id):
     """Update vessel progress with offline support"""
     try:
@@ -313,7 +338,13 @@ def refresh_cache():
         if cache_type in ['all', 'vessels']:
             try:
                 vessels = Vessel.query.all()
-                vessel_list = [vessel.to_dict(include_progress=True) for vessel in vessels]
+                vessel_list = []
+                for vessel in vessels:
+                    try:
+                        vessel_list.append(vessel.to_dict(include_progress=True))
+                    except Exception as e:
+                        current_app.logger.error(f"Error converting vessel {vessel.id} to dict in cache refresh: {e}")
+                        continue
                 
                 if offline_data_manager.cache_vessel_data(vessel_list, "server"):
                     refreshed.append('vessels')

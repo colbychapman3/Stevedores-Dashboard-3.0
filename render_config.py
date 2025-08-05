@@ -10,7 +10,10 @@ class RenderConfig:
     """Production configuration for Render deployment"""
     
     # Basic Flask settings
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'change-this-in-production'
+    # SECURITY FIX: Require SECRET_KEY - no hardcoded fallback for production
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable is required for production deployment")
     DEBUG = False
     TESTING = False
     

@@ -39,20 +39,41 @@ def vessel_wizard():
         vessel = Vessel(
             # Step 1: Vessel Information
             name=data.get('vesselName', '').strip(),
+            shipping_line=data.get('shippingLine', ''),
             vessel_type=data.get('vesselType', ''),
-            port_of_call=data.get('port', ''),
-            eta=datetime.fromisoformat(data.get('operationDate')) if data.get('operationDate') else None,
+            port_of_call=data.get('port', 'Colonel Island'),
+            operation_start_date=datetime.fromisoformat(data.get('operationStartDate')).date() if data.get('operationStartDate') else None,
+            operation_end_date=datetime.fromisoformat(data.get('operationEndDate')).date() if data.get('operationEndDate') else None,
+            stevedoring_company=data.get('stevedoringCompany', 'APS Stevedoring'),
+            operation_type=data.get('operationType', ''),
+            berth_assignment=data.get('berthAssignment', ''),
+            operations_manager=data.get('operationsManager', ''),
             
-            # Step 2: Cargo Configuration
-            total_cargo_capacity=int(data.get('totalAutomobiles', 0)),
-            cargo_type=data.get('cargoType', 'automobile'),
-            heavy_equipment_count=int(data.get('heavyEquipment', 0)),
+            # Step 2: Team Assignments (JSON)
+            team_assignments=json.dumps(collect_team_assignments(data)),
             
-            # Step 3: Operational Parameters
-            shift_start=time.fromisoformat(data.get('shiftStart')) if data.get('shiftStart') else None,
-            shift_end=time.fromisoformat(data.get('shiftEnd')) if data.get('shiftEnd') else None,
-            drivers_assigned=int(data.get('driversAssigned', 0)),
-            tico_vehicles_needed=int(data.get('ticoVehicles', 0)),
+            # Step 3: Cargo Configuration (JSON)
+            cargo_configuration=json.dumps(collect_cargo_configuration(data)),
+            
+            # Step 4: Operational Parameters
+            total_drivers=int(data.get('totalDrivers', 0)),
+            shift_start_time=time.fromisoformat(data.get('shiftStartTime')) if data.get('shiftStartTime') else None,
+            shift_end_time=time.fromisoformat(data.get('shiftEndTime')) if data.get('shiftEndTime') else None,
+            ship_start_time=time.fromisoformat(data.get('shipStartTime')) if data.get('shipStartTime') else None,
+            ship_complete_time=time.fromisoformat(data.get('shipCompleteTime')) if data.get('shipCompleteTime') else None,
+            number_of_breaks=int(data.get('numberOfBreaks', 0)),
+            target_completion=datetime.fromisoformat(data.get('targetCompletion')) if data.get('targetCompletion') else None,
+            number_of_vans=int(data.get('numberOfVans', 0)),
+            number_of_wagons=int(data.get('numberOfWagons', 0)),
+            number_of_low_decks=int(data.get('numberOfLowDecks', 0)),
+            van_details=json.dumps(collect_van_details(data)),
+            wagon_details=json.dumps(collect_wagon_details(data)),
+            
+            # Legacy fields for backward compatibility
+            eta=datetime.fromisoformat(data.get('operationStartDate')) if data.get('operationStartDate') else None,
+            total_cargo_capacity=int(data.get('dischargeTotalAutos', 0)) + int(data.get('loadingTotalAutos', 0)) + int(data.get('loadbackTotalAutos', 0)),
+            drivers_assigned=int(data.get('totalDrivers', 0)),
+            tico_vehicles_needed=int(data.get('numberOfVans', 0)) + int(data.get('numberOfWagons', 0)),
             
             # Status and metadata
             status='expected',
@@ -224,3 +245,127 @@ def extract_data_from_csv(content):
                             pass
     
     return extracted
+
+def collect_team_assignments(data):
+    """Collect team assignment data from form"""
+    teams = {
+        'auto_operations': [],
+        'high_heavy': []
+    }
+    
+    # Collect auto operations team
+    auto_members = int(data.get('autoOperationsMembers', 0))
+    for i in range(1, auto_members + 1):
+        member_name = data.get(f'autoOperationsMember{i}', '')
+        if member_name == 'Custom':
+            member_name = data.get(f'autoOperationsMemberCustom{i}', '')
+        
+        if member_name:
+            teams['auto_operations'].append({
+                'name': member_name,
+                'position': i
+            })
+    
+    # Collect high heavy team
+    heavy_members = int(data.get('highHeavyMembers', 0))
+    for i in range(1, heavy_members + 1):
+        member_name = data.get(f'highHeavyMember{i}', '')
+        if member_name == 'Custom':
+            member_name = data.get(f'highHeavyMemberCustom{i}', '')
+        
+        if member_name:
+            teams['high_heavy'].append({
+                'name': member_name,
+                'position': i
+            })
+    
+    return teams
+
+def collect_cargo_configuration(data):
+    """Collect cargo configuration data from form"""
+    cargo_config = {}
+    
+    operation_type = data.get('operationType', '')
+    
+    if operation_type in ['Discharge Only', 'Discharge + Loadback']:
+        cargo_config['discharge'] = {
+            'total_autos': int(data.get('dischargeTotalAutos', 0)),
+            'heavy_equipment': int(data.get('dischargeHeavy', 0)),
+            'vehicle_types': collect_vehicle_types(data, 'discharge')
+        }
+    
+    if operation_type == 'Loading Only':
+        cargo_config['loading'] = {
+            'total_autos': int(data.get('loadingTotalAutos', 0)),
+            'heavy_equipment': int(data.get('loadingHeavy', 0)),
+            'vehicle_types': collect_vehicle_types(data, 'loading')
+        }
+    
+    if operation_type == 'Discharge + Loadback':
+        cargo_config['loadback'] = {
+            'total_autos': int(data.get('loadbackTotalAutos', 0)),
+            'heavy_equipment': int(data.get('loadbackHeavy', 0)),
+            'vehicle_types': collect_vehicle_types(data, 'loadback')
+        }
+    
+    return cargo_config
+
+def collect_vehicle_types(data, section):
+    """Collect vehicle type data for a specific section"""
+    vehicle_types = []
+    
+    # Look for dynamically added vehicle types
+    counter = 1
+    while True:
+        vehicle_type = data.get(f'{section}VehicleType{counter}', '')
+        quantity = data.get(f'{section}Quantity{counter}', '')
+        location = data.get(f'{section}Location{counter}', '')
+        
+        if not vehicle_type:
+            break
+        
+        vehicle_types.append({
+            'type': vehicle_type,
+            'quantity': int(quantity) if quantity else 0,
+            'location': location
+        })
+        
+        counter += 1
+    
+    return vehicle_types
+
+def collect_van_details(data):
+    """Collect van details from form"""
+    van_details = []
+    
+    num_vans = int(data.get('numberOfVans', 0))
+    for i in range(1, num_vans + 1):
+        van_id = data.get(f'van{i}Id', '')
+        driver_name = data.get(f'van{i}Driver', '')
+        
+        if van_id or driver_name:
+            van_details.append({
+                'van_number': i,
+                'id_number': van_id,
+                'driver_name': driver_name
+            })
+    
+    return van_details
+
+def collect_wagon_details(data):
+    """Collect wagon details from form"""
+    wagon_details = []
+    
+    num_wagons = int(data.get('numberOfWagons', 0))
+    for i in range(1, num_wagons + 1):
+        wagon_id = data.get(f'wagon{i}Id', '')
+        driver_name = data.get(f'wagon{i}Driver', '')
+        
+        if wagon_id or driver_name:
+            wagon_details.append({
+                'wagon_number': i,
+                'id_number': wagon_id,
+                'driver_name': driver_name
+            })
+    
+    return wagon_details

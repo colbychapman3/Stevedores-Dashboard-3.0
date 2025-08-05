@@ -26,17 +26,46 @@ def create_vessel_model(db):
         
         # Basic vessel information (Step 1)
         name = db.Column(db.String(100), nullable=False, index=True)
-        vessel_type = db.Column(db.String(50), nullable=False)
-        port_of_call = db.Column(db.String(100), nullable=False)
+        shipping_line = db.Column(db.String(50), nullable=True, default='K-line')  # K-line, Grimaldi, Glovis, MOL
+        vessel_type = db.Column(db.String(50), nullable=False, default='Auto Only')  # Auto Only, Heavy Only, Auto + Heavy
+        port_of_call = db.Column(db.String(100), nullable=False, default='Colonel Island')
+        operation_start_date = db.Column(db.Date, nullable=True)
+        operation_end_date = db.Column(db.Date, nullable=True)
+        stevedoring_company = db.Column(db.String(100), nullable=False, default='APS Stevedoring')
+        operation_type = db.Column(db.String(50), nullable=False, default='Discharge Only')  # Discharge Only, Loading Only, Discharge + Loadback
+        berth_assignment = db.Column(db.String(20), nullable=False, default='Berth 1')  # Berth 1, Berth 2, Berth 3
+        operations_manager = db.Column(db.String(50), nullable=False, default='Jonathan')  # Jonathan, Joe, Mark
+        
+        # Legacy fields for backward compatibility
         eta = db.Column(db.DateTime, nullable=True)
         etd = db.Column(db.DateTime, nullable=True)
         
-        # Cargo information (Step 2)  
+        # Team assignments (Step 2) - stored as JSON
+        team_assignments = db.Column(db.Text, nullable=True)  # JSON: {auto_operations: [], high_heavy: []}
+        
+        # Cargo configuration (Step 3) - stored as JSON  
+        cargo_configuration = db.Column(db.Text, nullable=True)  # JSON: {discharge: {}, loadback: {}}
+        
+        # Operational parameters (Step 4)
+        total_drivers = db.Column(db.Integer, default=0)
+        shift_start_time = db.Column(db.Time, nullable=True)
+        shift_end_time = db.Column(db.Time, nullable=True)
+        ship_start_time = db.Column(db.Time, nullable=True)
+        ship_complete_time = db.Column(db.Time, nullable=True)
+        number_of_breaks = db.Column(db.Integer, default=0)
+        target_completion = db.Column(db.DateTime, nullable=True)
+        number_of_vans = db.Column(db.Integer, default=0)
+        number_of_wagons = db.Column(db.Integer, default=0)
+        number_of_low_decks = db.Column(db.Integer, default=0)
+        
+        # TICO vehicle details - stored as JSON
+        van_details = db.Column(db.Text, nullable=True)  # JSON: [{id_number: '', driver_name: ''}, ...]
+        wagon_details = db.Column(db.Text, nullable=True)  # JSON: [{id_number: '', driver_name: ''}, ...]
+        
+        # Legacy fields for backward compatibility
         total_cargo_capacity = db.Column(db.Integer, default=0)
         cargo_type = db.Column(db.String(50), default='automobile')
         heavy_equipment_count = db.Column(db.Integer, default=0)
-        
-        # Operational parameters (Step 3)
         shift_start = db.Column(db.Time, nullable=True)
         shift_end = db.Column(db.Time, nullable=True)
         drivers_assigned = db.Column(db.Integer, default=0)
@@ -105,11 +134,51 @@ def create_vessel_model(db):
         
         def to_dict(self, include_progress=True):
             """Convert vessel to dictionary for API responses"""
+            import json
+            
+            # Safe JSON parsing with error handling
+            def safe_json_loads(json_str):
+                if not json_str:
+                    return None
+                try:
+                    return json.loads(json_str)
+                except (json.JSONDecodeError, TypeError):
+                    # Return None for invalid JSON data, don't crash the whole operation
+                    return None
+            
             data = {
                 'id': self.id,
                 'name': self.name,
+                'shipping_line': self.shipping_line,
                 'vessel_type': self.vessel_type,
                 'port_of_call': self.port_of_call,
+                'operation_start_date': self.operation_start_date.isoformat() if self.operation_start_date else None,
+                'operation_end_date': self.operation_end_date.isoformat() if self.operation_end_date else None,
+                'stevedoring_company': self.stevedoring_company,
+                'operation_type': self.operation_type,
+                'berth_assignment': self.berth_assignment,
+                'operations_manager': self.operations_manager,
+                'team_assignments': safe_json_loads(self.team_assignments),
+                'cargo_configuration': safe_json_loads(self.cargo_configuration),
+                'total_drivers': self.total_drivers,
+                'shift_start_time': self.shift_start_time.isoformat() if self.shift_start_time else None,
+                'shift_end_time': self.shift_end_time.isoformat() if self.shift_end_time else None,
+                'ship_start_time': self.ship_start_time.isoformat() if self.ship_start_time else None,
+                'ship_complete_time': self.ship_complete_time.isoformat() if self.ship_complete_time else None,
+                'number_of_breaks': self.number_of_breaks,
+                'target_completion': self.target_completion.isoformat() if self.target_completion else None,
+                'number_of_vans': self.number_of_vans,
+                'number_of_wagons': self.number_of_wagons,
+                'number_of_low_decks': self.number_of_low_decks,
+                'van_details': safe_json_loads(self.van_details),
+                'wagon_details': safe_json_loads(self.wagon_details),
+                'status': self.status,
+                'current_berth': self.current_berth,
+                'wizard_completed': self.wizard_completed,
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+                'document_source': self.document_source,
+                # Legacy fields
                 'eta': self.eta.isoformat() if self.eta else None,
                 'etd': self.etd.isoformat() if self.etd else None,
                 'total_cargo_capacity': self.total_cargo_capacity,
@@ -118,13 +187,7 @@ def create_vessel_model(db):
                 'shift_start': self.shift_start.isoformat() if self.shift_start else None,
                 'shift_end': self.shift_end.isoformat() if self.shift_end else None,
                 'drivers_assigned': self.drivers_assigned,
-                'tico_vehicles_needed': self.tico_vehicles_needed,
-                'status': self.status,
-                'current_berth': self.current_berth,
-                'wizard_completed': self.wizard_completed,
-                'created_at': self.created_at.isoformat() if self.created_at else None,
-                'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-                'document_source': self.document_source
+                'tico_vehicles_needed': self.tico_vehicles_needed
             }
             
             if include_progress:

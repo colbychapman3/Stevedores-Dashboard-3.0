@@ -26,9 +26,12 @@ function initializeWizard() {
     // Setup auto-save functionality
     setupAutoSave();
     
-    // Set default operation date to today
+    // Set default operation dates to today
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('operationDate').value = today;
+    const startDateField = document.getElementById('operationStartDate');
+    const endDateField = document.getElementById('operationEndDate');
+    if (startDateField) startDateField.value = today;
+    if (endDateField) endDateField.value = today;
     
     // Setup drag and drop for document upload
     setupDragAndDrop();
@@ -99,6 +102,8 @@ function validateStep(step) {
         return validateStep2();
     } else if (step === 3) {
         return validateStep3();
+    } else if (step === 4) {
+        return validateStep4();
     }
     
     return true;
@@ -106,12 +111,21 @@ function validateStep(step) {
 
 function validateStep1() {
     const vesselName = getValue('vesselName');
+    const shippingLine = getValue('shippingLine');
     const vesselType = getValue('vesselType');
-    const port = getValue('port');
-    const operationDate = getValue('operationDate');
+    const operationStartDate = getValue('operationStartDate');
+    const operationEndDate = getValue('operationEndDate');
+    const operationType = getValue('operationType');
+    const berthAssignment = getValue('berthAssignment');
+    const operationsManager = getValue('operationsManager');
     
     if (!vesselName.trim()) {
         showValidationError('vesselName', 'Vessel name is required');
+        return false;
+    }
+    
+    if (!shippingLine) {
+        showValidationError('shippingLine', 'Shipping line is required');
         return false;
     }
     
@@ -120,23 +134,106 @@ function validateStep1() {
         return false;
     }
     
-    if (!port) {
-        showValidationError('port', 'Port of call is required');
+    if (!operationStartDate) {
+        showValidationError('operationStartDate', 'Operation start date is required');
         return false;
     }
     
-    if (!operationDate) {
-        showValidationError('operationDate', 'Operation date is required');
+    if (!operationEndDate) {
+        showValidationError('operationEndDate', 'Operation end date is required');
         return false;
     }
     
-    // Validate date is not too far in the past
-    const selectedDate = new Date(operationDate);
-    const today = new Date();
-    const daysDiff = (today - selectedDate) / (1000 * 60 * 60 * 24);
+    if (!operationType) {
+        showValidationError('operationType', 'Operation type is required');
+        return false;
+    }
     
-    if (daysDiff > 30) {
-        if (!confirm('The selected date is more than 30 days ago. Are you sure you want to continue?')) {
+    if (!berthAssignment) {
+        showValidationError('berthAssignment', 'Berth assignment is required');
+        return false;
+    }
+    
+    if (!operationsManager) {
+        showValidationError('operationsManager', 'Operations manager is required');
+        return false;
+    }
+    
+    // Validate dates
+    const startDate = new Date(operationStartDate);
+    const endDate = new Date(operationEndDate);
+    
+    if (endDate < startDate) {
+        showValidationError('operationEndDate', 'End date cannot be before start date');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateStep2() {
+    // Step 2 validation - team assignments
+    const autoMembers = parseInt(getValue('autoOperationsMembers')) || 0;
+    const highHeavyMembers = parseInt(getValue('highHeavyMembers')) || 0;
+    
+    // Validate that at least one team member is assigned for auto operations
+    if (autoMembers === 0) {
+        showValidationError('autoOperationsMembers', 'At least one auto operations team member is required');
+        return false;
+    }
+    
+    // Validate team member selections
+    for (let i = 1; i <= autoMembers; i++) {
+        const memberValue = getValue(`autoOperationsMember${i}`);
+        const customValue = getValue(`autoOperationsMemberCustom${i}`);
+        
+        if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
+            showValidationError(`autoOperationsMember${i}`, `Auto operations member ${i} is required`);
+            return false;
+        }
+    }
+    
+    // Validate high heavy team if K-line
+    const shippingLine = getValue('shippingLine');
+    if (shippingLine === 'K-line' && highHeavyMembers > 0) {
+        for (let i = 1; i <= highHeavyMembers; i++) {
+            const memberValue = getValue(`highHeavyMember${i}`);
+            const customValue = getValue(`highHeavyMemberCustom${i}`);
+            
+            if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
+                showValidationError(`highHeavyMember${i}`, `High heavy team member ${i} is required`);
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+function validateStep3() {
+    // Step 3 validation - cargo configuration
+    const operationType = getValue('operationType');
+    
+    if (operationType === 'Discharge Only' || operationType === 'Discharge + Loadback') {
+        const dischargeTotalAutos = getValue('dischargeTotalAutos');
+        if (!dischargeTotalAutos || parseInt(dischargeTotalAutos) <= 0) {
+            showValidationError('dischargeTotalAutos', 'Total autos for discharge is required');
+            return false;
+        }
+    }
+    
+    if (operationType === 'Loading Only') {
+        const loadingTotalAutos = getValue('loadingTotalAutos');
+        if (!loadingTotalAutos || parseInt(loadingTotalAutos) <= 0) {
+            showValidationError('loadingTotalAutos', 'Total autos for loading is required');
+            return false;
+        }
+    }
+    
+    if (operationType === 'Discharge + Loadback') {
+        const loadbackTotalAutos = getValue('loadbackTotalAutos');
+        if (!loadbackTotalAutos || parseInt(loadbackTotalAutos) <= 0) {
+            showValidationError('loadbackTotalAutos', 'Total autos for loadback is required');
             return false;
         }
     }
@@ -144,26 +241,54 @@ function validateStep1() {
     return true;
 }
 
-function validateStep2() {
-    // Step 2 validation - mostly optional fields
-    const totalAutomobiles = getValue('totalAutomobiles');
+function validateStep4() {
+    // Step 4 validation - operational parameters
+    const totalDrivers = getValue('totalDrivers');
+    const shiftStartTime = getValue('shiftStartTime');
+    const shiftEndTime = getValue('shiftEndTime');
+    const numberOfVans = parseInt(getValue('numberOfVans')) || 0;
+    const numberOfWagons = parseInt(getValue('numberOfWagons')) || 0;
     
-    if (totalAutomobiles && parseInt(totalAutomobiles) < 0) {
-        showValidationError('totalAutomobiles', 'Total automobiles cannot be negative');
+    if (!totalDrivers || parseInt(totalDrivers) <= 0) {
+        showValidationError('totalDrivers', 'Total drivers is required');
         return false;
     }
     
-    return true;
-}
-
-function validateStep3() {
-    // Step 3 validation - operational parameters
-    const shiftStart = getValue('shiftStart');
-    const shiftEnd = getValue('shiftEnd');
+    if (shiftStartTime && shiftEndTime) {
+        if (shiftStartTime >= shiftEndTime) {
+            showValidationError('shiftEndTime', 'Shift end time must be after start time');
+            return false;
+        }
+    }
     
-    if (shiftStart && shiftEnd) {
-        if (shiftStart >= shiftEnd) {
-            showValidationError('shiftEnd', 'Shift end time must be after start time');
+    // Validate van details if vans are specified
+    for (let i = 1; i <= numberOfVans; i++) {
+        const vanId = getValue(`van${i}Id`);
+        const vanDriver = getValue(`van${i}Driver`);
+        
+        if (!vanId.trim()) {
+            showValidationError(`van${i}Id`, `Van ${i} ID is required`);
+            return false;
+        }
+        
+        if (!vanDriver.trim()) {
+            showValidationError(`van${i}Driver`, `Van ${i} driver name is required`);
+            return false;
+        }
+    }
+    
+    // Validate wagon details if wagons are specified
+    for (let i = 1; i <= numberOfWagons; i++) {
+        const wagonId = getValue(`wagon${i}Id`);
+        const wagonDriver = getValue(`wagon${i}Driver`);
+        
+        if (!wagonId.trim()) {
+            showValidationError(`wagon${i}Id`, `Wagon ${i} ID is required`);
+            return false;
+        }
+        
+        if (!wagonDriver.trim()) {
+            showValidationError(`wagon${i}Driver`, `Wagon ${i} driver name is required`);
             return false;
         }
     }
@@ -831,5 +956,326 @@ function setUploadStatus(type, message) {
         }, 5000);
     }
 }
+
+// New Enhanced Wizard Functions for Dashboard 3.0
+
+// Step 1: Conditional Logic Functions
+function updateVesselTypeOptions() {
+    const shippingLine = document.getElementById('shippingLine').value;
+    const vesselType = document.getElementById('vesselType');
+    const kLineOptions = document.querySelectorAll('.k-line-only');
+    
+    // Reset vessel type selection
+    vesselType.value = '';
+    
+    if (shippingLine === 'K-line') {
+        // Show all options for K-line
+        kLineOptions.forEach(option => {
+            option.style.display = 'block';
+        });
+    } else if (['Grimaldi', 'Glovis', 'MOL'].includes(shippingLine)) {
+        // Hide Heavy Only and Auto + Heavy for other lines
+        kLineOptions.forEach(option => {
+            option.style.display = 'none';
+        });
+    }
+    
+    // Update Step 2 visibility based on shipping line
+    updateStep2Visibility();
+    
+    // Update Step 3 heavy equipment visibility
+    updateStep3HeavyEquipment();
+}
+
+// Update Step 2 team assignment visibility
+function updateStep2Visibility() {
+    const shippingLine = document.getElementById('shippingLine').value;
+    const highHeavySection = document.getElementById('highHeavySection');
+    
+    if (shippingLine === 'K-line') {
+        highHeavySection.style.display = 'block';
+    } else {
+        highHeavySection.style.display = 'none';
+        // Reset high heavy team members when hidden
+        document.getElementById('highHeavyMembers').value = '0';
+        updateTeamMembers('highHeavy');
+    }
+}
+
+// Update Step 3 cargo configuration based on operation type and vessel type
+function updateStep3Configuration() {
+    const operationType = document.getElementById('operationType').value;
+    const dischargeSection = document.getElementById('dischargeSection');
+    const loadbackSection = document.getElementById('loadbackSection');
+    const loadingSection = document.getElementById('loadingSection');
+    
+    // Hide all sections first
+    dischargeSection.style.display = 'none';
+    loadbackSection.style.display = 'none';
+    loadingSection.style.display = 'none';
+    
+    if (operationType === 'Discharge Only') {
+        dischargeSection.style.display = 'block';
+    } else if (operationType === 'Loading Only') {
+        loadingSection.style.display = 'block';
+    } else if (operationType === 'Discharge + Loadback') {
+        dischargeSection.style.display = 'block';
+        loadbackSection.style.display = 'block';
+    }
+    
+    updateStep3HeavyEquipment();
+}
+
+function updateStep3HeavyEquipment() {
+    const shippingLine = document.getElementById('shippingLine').value;
+    const vesselType = document.getElementById('vesselType').value;
+    
+    const heavyContainers = [
+        document.getElementById('dischargeHeavyContainer'),
+        document.getElementById('loadbackHeavyContainer'),
+        document.getElementById('loadingHeavyContainer')
+    ];
+    
+    heavyContainers.forEach(container => {
+        if (container) {
+            if (shippingLine === 'K-line' && vesselType === 'Auto + Heavy') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Step 2: Team Assignment Functions
+function updateTeamMembers(teamType) {
+    const memberCount = parseInt(document.getElementById(`${teamType}Members`).value) || 0;
+    const container = document.getElementById(`${teamType}TeamMembers`);
+    
+    // Clear existing members
+    container.innerHTML = '';
+    
+    // Add member fields based on count
+    for (let i = 1; i <= memberCount; i++) {
+        const memberDiv = document.createElement('div');
+        memberDiv.className = 'flex flex-col';
+        memberDiv.innerHTML = `
+            <label for="${teamType}Member${i}" class="block text-sm font-medium text-gray-700 mb-2">Member ${i}</label>
+            <select id="${teamType}Member${i}" name="${teamType}Member${i}" onchange="handleMemberSelection('${teamType}', ${i})"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Member</option>
+                <option value="Colby">Colby</option>
+                <option value="Spencer">Spencer</option>
+                <option value="Cole">Cole</option>
+                <option value="Bruce">Bruce</option>
+                <option value="Custom">Custom</option>
+            </select>
+            <input type="text" id="${teamType}MemberCustom${i}" name="${teamType}MemberCustom${i}" 
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mt-2 hidden"
+                   placeholder="Enter custom name">
+        `;
+        container.appendChild(memberDiv);
+    }
+}
+
+function handleMemberSelection(teamType, memberIndex) {
+    const select = document.getElementById(`${teamType}Member${memberIndex}`);
+    const customInput = document.getElementById(`${teamType}MemberCustom${memberIndex}`);
+    
+    if (select.value === 'Custom') {
+        customInput.classList.remove('hidden');
+        customInput.required = true;
+    } else {
+        customInput.classList.add('hidden');
+        customInput.required = false;
+        customInput.value = '';
+    }
+}
+
+// Step 3: Cargo Configuration Functions
+let vehicleTypeCounters = {
+    discharge: 0,
+    loadback: 0,
+    loading: 0
+};
+
+function addVehicleType(section) {
+    vehicleTypeCounters[section]++;
+    const container = document.getElementById(`${section}VehicleTypes`);
+    
+    const vehicleDiv = document.createElement('div');
+    vehicleDiv.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-lg';
+    vehicleDiv.id = `${section}VehicleType${vehicleTypeCounters[section]}`;
+    
+    vehicleDiv.innerHTML = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
+            <input type="text" name="${section}VehicleType${vehicleTypeCounters[section]}" 
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="e.g., Sedan, SUV, Truck">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+            <input type="number" name="${section}Quantity${vehicleTypeCounters[section]}" min="0"
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="Enter quantity">
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+            <input type="text" name="${section}Location${vehicleTypeCounters[section]}" 
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                   placeholder="e.g., Deck 1, Zone A">
+        </div>
+        <div class="md:col-span-3">
+            <button type="button" onclick="removeVehicleType('${section}', ${vehicleTypeCounters[section]})" 
+                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                <i class="fas fa-trash mr-1"></i>Remove
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(vehicleDiv);
+}
+
+function removeVehicleType(section, index) {
+    const element = document.getElementById(`${section}VehicleType${index}`);
+    if (element) {
+        element.remove();
+    }
+}
+
+// Step 4: TICO Transportation Functions
+function updateVanList() {
+    const vanCount = parseInt(document.getElementById('numberOfVans').value) || 0;
+    const vanDetailsSection = document.getElementById('vanDetailsSection');
+    const vanDetailsList = document.getElementById('vanDetailsList');
+    
+    // Clear existing van details
+    vanDetailsList.innerHTML = '';
+    
+    if (vanCount > 0) {
+        vanDetailsSection.style.display = 'block';
+        
+        for (let i = 1; i <= vanCount; i++) {
+            const vanDiv = document.createElement('div');
+            vanDiv.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-gray-200 rounded-lg';
+            vanDiv.innerHTML = `
+                <div>
+                    <label for="van${i}Id" class="block text-sm font-medium text-gray-700 mb-2">Van ${i} ID Number</label>
+                    <input type="text" id="van${i}Id" name="van${i}Id" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter van ID">
+                </div>
+                <div>
+                    <label for="van${i}Driver" class="block text-sm font-medium text-gray-700 mb-2">Van ${i} Driver Name</label>
+                    <input type="text" id="van${i}Driver" name="van${i}Driver" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter driver name">
+                </div>
+            `;
+            vanDetailsList.appendChild(vanDiv);
+        }
+    } else {
+        vanDetailsSection.style.display = 'none';
+    }
+}
+
+function updateWagonList() {
+    const wagonCount = parseInt(document.getElementById('numberOfWagons').value) || 0;
+    const wagonDetailsSection = document.getElementById('wagonDetailsSection');
+    const wagonDetailsList = document.getElementById('wagonDetailsList');
+    
+    // Clear existing wagon details
+    wagonDetailsList.innerHTML = '';
+    
+    if (wagonCount > 0) {
+        wagonDetailsSection.style.display = 'block';
+        
+        for (let i = 1; i <= wagonCount; i++) {
+            const wagonDiv = document.createElement('div');
+            wagonDiv.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-gray-200 rounded-lg';
+            wagonDiv.innerHTML = `
+                <div>
+                    <label for="wagon${i}Id" class="block text-sm font-medium text-gray-700 mb-2">Wagon ${i} ID Number</label>
+                    <input type="text" id="wagon${i}Id" name="wagon${i}Id" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter wagon ID">
+                </div>
+                <div>
+                    <label for="wagon${i}Driver" class="block text-sm font-medium text-gray-700 mb-2">Wagon ${i} Driver Name</label>
+                    <input type="text" id="wagon${i}Driver" name="wagon${i}Driver" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                           placeholder="Enter driver name">
+                </div>
+            `;
+            wagonDetailsList.appendChild(wagonDiv);
+        }
+    } else {
+        wagonDetailsSection.style.display = 'none';
+    }
+}
+
+function checkLowDeckWarning() {
+    const lowDecks = parseInt(document.getElementById('numberOfLowDecks').value) || 0;
+    const wagons = parseInt(document.getElementById('numberOfWagons').value) || 0;
+    const warning = document.getElementById('lowDeckWarning');
+    
+    if (lowDecks > 0 && wagons === 0) {
+        warning.classList.remove('hidden');
+    } else {
+        warning.classList.add('hidden');
+    }
+}
+
+// Enhanced Navigation with Conditional Logic
+function nextStep(step) {
+    if (validateStep(step)) {
+        saveStepData(step);
+        hideStep(step);
+        showStep(step + 1);
+        updateStepIndicators(step, step + 1);
+        currentStep = step + 1;
+        
+        // Apply conditional logic when entering steps
+        if (step + 1 === 2) {
+            updateStep2Visibility();
+        } else if (step + 1 === 3) {
+            updateStep3Configuration();
+        }
+        
+        if (step === 3) {
+            generateReviewSummary();
+        }
+    }
+}
+
+// Event Listeners for Conditional Logic
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners for conditional updates
+    const shippingLineField = document.getElementById('shippingLine');
+    if (shippingLineField) {
+        shippingLineField.addEventListener('change', updateVesselTypeOptions);
+    }
+    
+    const operationTypeField = document.getElementById('operationType');
+    if (operationTypeField) {
+        operationTypeField.addEventListener('change', updateStep3Configuration);
+    }
+    
+    const vesselTypeField = document.getElementById('vesselType');
+    if (vesselTypeField) {
+        vesselTypeField.addEventListener('change', updateStep3HeavyEquipment);
+    }
+    
+    const numberOfWagonsField = document.getElementById('numberOfWagons');
+    if (numberOfWagonsField) {
+        numberOfWagonsField.addEventListener('change', checkLowDeckWarning);
+    }
+    
+    const numberOfLowDecksField = document.getElementById('numberOfLowDecks');
+    if (numberOfLowDecksField) {
+        numberOfLowDecksField.addEventListener('change', checkLowDeckWarning);
+    }
+});
 
 console.log('Enhanced wizard with offline document processing loaded');

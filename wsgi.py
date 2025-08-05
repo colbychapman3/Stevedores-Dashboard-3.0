@@ -17,14 +17,44 @@ os.environ.setdefault('PYTHONPATH', str(project_dir))
 
 try:
     from app import app, init_database
-    from production_config import config
     
-    # Configure for production
-    config_name = os.environ.get('FLASK_CONFIG', 'production')
-    app.config.from_object(config[config_name])
+    # INTELLIGENT CONFIG DETECTION: Try render_config first, then production_config
+    config_loaded = False
+    config_name = os.environ.get('FLASK_CONFIG', 'render')
     
-    # Initialize production configuration
-    config[config_name].init_app(app)
+    # Try render_config first (for Render deployments)
+    if not config_loaded:
+        try:
+            from render_config import config
+            if config_name in config:
+                app.config.from_object(config[config_name])
+                config[config_name].init_app(app)
+                config_loaded = True
+                print(f"✅ WSGI: Loaded render_config: {config_name}")
+            else:
+                # Fallback to 'render' if specific config not found
+                app.config.from_object(config['render'])
+                config['render'].init_app(app) 
+                config_loaded = True
+                print(f"✅ WSGI: Loaded render_config: render (fallback)")
+        except ImportError:
+            print("⚠️  WSGI: render_config not available, trying production_config")
+    
+    # Fallback to production_config if render_config not available
+    if not config_loaded:
+        try:
+            from production_config import config
+            fallback_name = 'production' if config_name in ['render', 'production'] else config_name
+            if fallback_name in config:
+                app.config.from_object(config[fallback_name])
+                config[fallback_name].init_app(app)
+                config_loaded = True
+                print(f"✅ WSGI: Loaded production_config: {fallback_name}")
+        except ImportError:
+            print("❌ WSGI: Neither render_config nor production_config available")
+            
+    if not config_loaded:
+        raise ImportError("No valid configuration module found")
     
     # Initialize database in production
     with app.app_context():
