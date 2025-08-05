@@ -31,43 +31,8 @@ except ImportError:
 # Initialize Flask app
 app = Flask(__name__)
 
-<<<<<<< HEAD
-# Configuration - Support multiple config sources
-config_name = os.environ.get('FLASK_CONFIG', 'development')
-config_loaded = False
-
-try:
-    # Try render_config first
-    from render_config import config
-    if config_name in config:
-        app.config.from_object(config[config_name])
-        config[config_name].init_app(app)
-        config_loaded = True
-except (ImportError, KeyError):
-    pass
-
-if not config_loaded:
-    try:
-        # Try production_config
-        from production_config import config
-        if config_name in config:
-            app.config.from_object(config[config_name])
-            if hasattr(config[config_name], 'init_app'):
-                config[config_name].init_app(app)
-            config_loaded = True
-    except (ImportError, KeyError):
-        pass
-
-if not config_loaded:
-    # Fallback to basic config
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'stevedores-dashboard-3.0-secret-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///stevedores.db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['TESTING'] = os.environ.get('FLASK_CONFIG') == 'testing'
-    app.config['DEBUG'] = os.environ.get('FLASK_CONFIG') == 'development'
-=======
 # FORCE CACHE REFRESH: Production build version identifier
-DEPLOYMENT_VERSION = "3.0.3-AUTH-DEBUG-20250805"
+DEPLOYMENT_VERSION = "3.0.6-SCHEMA-FIX-20250805"
 print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
 
 # Early logging setup for configuration debugging
