@@ -121,45 +121,6 @@ def current_user_info():
         'authenticated': True
     })
 
-@auth_bp.route('/debug-user')
-def debug_user():
-    """Debug endpoint to test user lookup and password verification"""
-    try:
-        db, User = get_db_and_models()
-        
-        # Test user lookup
-        email = 'demo@maritime.test'
-        user = User.query.filter_by(email=email).first()
-        
-        result = {
-            'user_exists': user is not None,
-            'email_searched': email,
-        }
-        
-        if user:
-            result.update({
-                'user_id': user.id,
-                'user_email': user.email,
-                'user_username': user.username,
-                'user_is_active': user.is_active,
-                'password_hash_exists': bool(user.password_hash),
-                'password_hash_length': len(user.password_hash) if user.password_hash else 0,
-            })
-            
-            # Test password verification
-            test_password = 'demo123'
-            try:
-                password_check_result = user.check_password(test_password)
-                result['password_check_success'] = True
-                result['password_check_result'] = password_check_result
-            except Exception as e:
-                result['password_check_success'] = False
-                result['password_check_error'] = str(e)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'exception_type': type(e).__name__
-        })
+# SECURITY FIX: Debug endpoint removed for production security
+# Original debug endpoint has been removed to prevent information disclosure
+# For debugging, use proper logging and monitoring tools instead
