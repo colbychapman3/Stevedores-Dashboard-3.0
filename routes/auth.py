@@ -29,10 +29,23 @@ def get_db_and_models():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """User login endpoint"""
-    if request.method == 'GET':
-        if current_user.is_authenticated:
-            return redirect(url_for('dashboard'))
-        return render_template('auth/login.html')
+    try:
+        print(f"[AUTH DEBUG] Login route accessed - method: {request.method}")
+        
+        if request.method == 'GET':
+            print(f"[AUTH DEBUG] GET request - checking authentication")
+            if current_user.is_authenticated:
+                print(f"[AUTH DEBUG] User already authenticated, redirecting to dashboard")
+                return redirect(url_for('dashboard'))
+            print(f"[AUTH DEBUG] Rendering login template")
+            return render_template('auth/login.html')
+            
+    except Exception as e:
+        print(f"[AUTH DEBUG] Exception in login GET: {str(e)}")
+        import traceback
+        print(f"[AUTH DEBUG] GET Exception traceback: {traceback.format_exc()}")
+        # Return a simple error page if template rendering fails
+        return f"<h1>Login Error</h1><p>Error loading login page: {str(e)}</p><p><a href='/'>Return to Home</a></p>", 500
     
     # Handle POST request
     try:

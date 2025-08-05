@@ -2,7 +2,7 @@
 // Critical for maritime operations where connectivity is unreliable
 // Enhanced with background sync, smart caching, and offline-first strategies
 
-const VERSION = '3.0.6-REDIRECT-FIX';
+const VERSION = '3.0.7-AUTH-FIX';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
@@ -121,12 +121,15 @@ self.addEventListener('fetch', event => {
     const url = new URL(request.url);
     
     // Skip non-GET requests, external domains, and critical production endpoints
-    if (request.method !== 'GET' || url.origin !== location.origin || 
+    // REINFORCED: Absolutely no interference with auth routes (any method)
+    if (url.origin !== location.origin || 
         url.pathname === '/init-database' || 
         url.pathname === '/health' ||
         url.pathname.startsWith('/auth/') ||
         url.pathname.startsWith('/manifest.json') ||
-        url.pathname.startsWith('/service-worker.js')) {
+        url.pathname.startsWith('/service-worker.js') ||
+        request.method !== 'GET') {
+        console.log(`[SW] Skipping ${request.method} ${url.pathname} - exempted from service worker`);
         return;
     }
     

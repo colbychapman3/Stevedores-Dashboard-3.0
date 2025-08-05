@@ -17,7 +17,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 
 # FORCE CACHE REFRESH: Production build version identifier
-DEPLOYMENT_VERSION = "3.0.2-REDIRECT-FIX-20250805"
+DEPLOYMENT_VERSION = "3.0.3-AUTH-DEBUG-20250805"
 print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
 
 # Early logging setup for configuration debugging
