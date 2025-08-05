@@ -16,6 +16,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # Initialize Flask app
 app = Flask(__name__)
 
+# FORCE CACHE REFRESH: Production build version identifier
+DEPLOYMENT_VERSION = "3.0.1-FIXED-IMPORTS-20250805"
+print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
+
 # Early logging setup for configuration debugging
 logging.basicConfig(level=logging.INFO)
 config_logger = logging.getLogger(__name__)
@@ -106,9 +110,12 @@ logging.basicConfig(level=logging.INFO)
 logger = app.logger
 
 # Import models after db initialization using factory functions
+# DEBUGGING: Force production cache refresh - these are the ONLY model imports
+print("🔍 DEBUG: Loading models from factory functions...")
 from models.user import create_user_model
 from models.vessel import create_vessel_model  
 from models.cargo_tally import create_cargo_tally_model
+print("🔍 DEBUG: Model imports completed successfully")
 
 # Create model classes
 User = create_user_model(db)
