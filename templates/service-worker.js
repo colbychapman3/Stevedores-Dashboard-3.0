@@ -2,7 +2,7 @@
 // Critical for maritime operations where connectivity is unreliable
 // Enhanced with background sync, smart caching, and offline-first strategies
 
-const VERSION = '3.0.5';
+const VERSION = '3.0.6-REDIRECT-FIX';
 const CACHE_NAME = `stevedores-dashboard-v${VERSION}`;
 const RUNTIME_CACHE = `stevedores-runtime-v${VERSION}`;
 const API_CACHE = `stevedores-api-v${VERSION}`;
@@ -120,9 +120,13 @@ self.addEventListener('fetch', event => {
     const { request } = event;
     const url = new URL(request.url);
     
-    // Skip non-GET requests, external domains, and critical auth/init endpoints
+    // Skip non-GET requests, external domains, and critical production endpoints
     if (request.method !== 'GET' || url.origin !== location.origin || 
-        url.pathname === '/init-database' || url.pathname === '/dashboard' || url.pathname.startsWith('/auth/')) {
+        url.pathname === '/init-database' || 
+        url.pathname === '/health' ||
+        url.pathname.startsWith('/auth/') ||
+        url.pathname.startsWith('/manifest.json') ||
+        url.pathname.startsWith('/service-worker.js')) {
         return;
     }
     
@@ -203,9 +207,15 @@ async function networkFirstStrategy(request, cache, options = {}) {
     const timeout = options.timeout || 5000;
     
     try {
-        // Race network request against timeout
+        // Race network request against timeout - PRESERVE ORIGINAL REDIRECT MODE
+        const fetchOptions = {
+            redirect: request.redirect || 'follow',
+            mode: request.mode || 'cors',
+            credentials: request.credentials || 'same-origin'
+        };
+        
         const networkResponse = await Promise.race([
-            fetch(request, { redirect: 'follow' }),
+            fetch(request, fetchOptions),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Network timeout')), timeout)
             )
@@ -245,8 +255,14 @@ async function networkFirstStrategy(request, cache, options = {}) {
 async function staleWhileRevalidateStrategy(request, cache) {
     const cachedResponse = await cache.match(request);
     
-    // Always try to fetch fresh data in background
-    const fetchPromise = fetch(request, { redirect: 'follow' }).then(response => {
+    // Always try to fetch fresh data in background - PRESERVE ORIGINAL REDIRECT MODE
+    const fetchOptions = {
+        redirect: request.redirect || 'follow',
+        mode: request.mode || 'cors',
+        credentials: request.credentials || 'same-origin'
+    };
+    
+    const fetchPromise = fetch(request, fetchOptions).then(response => {
         if (response.ok) {
             cache.put(request.clone(), response.clone());
         }
@@ -318,8 +334,14 @@ async function handleStaticResource(request, url) {
     }
     
     try {
-        // Fetch from network
-        const networkResponse = await fetch(request, { redirect: 'follow' });
+        // Fetch from network - PRESERVE ORIGINAL REDIRECT MODE
+        const fetchOptions = {
+            redirect: request.redirect || 'follow',
+            mode: request.mode || 'cors',
+            credentials: request.credentials || 'same-origin'
+        };
+        
+        const networkResponse = await fetch(request, fetchOptions);
         
         if (networkResponse.ok) {
             // Cache static resources for offline use
@@ -377,8 +399,15 @@ async function handleNavigationRequest(request, url) {
             setTimeout(() => reject(new Error('Navigation timeout')), 2000)
         );
         
+        // PRESERVE ORIGINAL REDIRECT MODE for navigation requests
+        const fetchOptions = {
+            redirect: request.redirect || 'follow',
+            mode: request.mode || 'cors',
+            credentials: request.credentials || 'same-origin'
+        };
+        
         const networkResponse = await Promise.race([
-            fetch(request, { redirect: 'follow' }),
+            fetch(request, fetchOptions),
             timeoutPromise
         ]);
         
@@ -436,7 +465,14 @@ async function handleGenericRequest(request, url) {
     const runtimeCache = await caches.open(RUNTIME_CACHE);
     
     try {
-        const networkResponse = await fetch(request, { redirect: 'follow' });
+        // PRESERVE ORIGINAL REDIRECT MODE for generic requests
+        const fetchOptions = {
+            redirect: request.redirect || 'follow',
+            mode: request.mode || 'cors',
+            credentials: request.credentials || 'same-origin'
+        };
+        
+        const networkResponse = await fetch(request, fetchOptions);
         
         if (networkResponse.ok) {
             // Cache for potential offline use
@@ -537,7 +573,7 @@ async function syncCargoTallies() {
     
     try {
         // Get pending tallies from sync queue
-        const response = await fetch('/sync/pending-cargo-tallies', { redirect: 'follow' });
+        const response = await fetch('/sync/pending-cargo-tallies');
         
         if (!response.ok) {
             throw new Error(`Failed to get pending tallies: ${response.status}`);
@@ -564,8 +600,7 @@ async function syncCargoTallies() {
                 const batchResponse = await fetch('/sync/cargo-tallies-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tallies: batch }),
-                    redirect: 'follow'
+                    body: JSON.stringify({ tallies: batch })
                 });
                 
                 if (batchResponse.ok) {
@@ -607,8 +642,7 @@ async function syncVesselData() {
     try {
         const response = await fetch('/sync/vessel-updates', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            redirect: 'follow'
+            headers: { 'Content-Type': 'application/json' }
         });
         
         if (response.ok) {
@@ -636,8 +670,7 @@ async function syncDocuments() {
     
     try {
         const response = await fetch('/sync/pending-documents', {
-            method: 'POST',
-            redirect: 'follow'
+            method: 'POST'
         });
         
         if (response.ok) {
@@ -656,8 +689,7 @@ async function syncWizardData() {
     
     try {
         const response = await fetch('/sync/offline-vessels', {
-            method: 'POST',
-            redirect: 'follow'
+            method: 'POST'
         });
         
         if (response.ok) {
@@ -873,8 +905,7 @@ async function syncCriticalVesselData() {
     try {
         const response = await fetch('/sync/critical-vessels', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            redirect: 'follow'
+            headers: { 'Content-Type': 'application/json' }
         });
         
         if (response.ok) {
@@ -896,8 +927,7 @@ async function syncCriticalVesselData() {
 async function syncUrgentCargoTallies() {
     try {
         const response = await fetch('/sync/urgent-tallies', {
-            method: 'POST',
-            redirect: 'follow'
+            method: 'POST'
         });
         
         if (response.ok) {
