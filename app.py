@@ -418,6 +418,31 @@ def health_check():
             'error': str(e)
         }), 503
 
+# Database initialization function (for wsgi.py and tests)
+def init_database():
+    """Initialize database and create demo users for production deployment"""
+    try:
+        with app.app_context():
+            db.create_all()
+            logger.info("Database tables created successfully")
+            
+            # Create demo user if it doesn't exist
+            if not User.query.filter_by(email='demo@maritime.test').first():
+                demo_user = User(
+                    email='demo@maritime.test',
+                    username='demo_user',
+                    password_hash=generate_password_hash('demo123'),
+                    is_active=True
+                )
+                db.session.add(demo_user)
+                db.session.commit()
+                logger.info("Demo user created successfully")
+            
+            return True
+    except Exception as e:
+        logger.error(f"Database initialization error: {e}")
+        return False
+
 # Database initialization and demo user creation
 @app.route('/init-database')
 def init_database_endpoint():
