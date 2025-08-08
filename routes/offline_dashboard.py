@@ -53,7 +53,7 @@ def get_dashboard_data():
                 'mode': 'offline',
                 'vessels': vessel_data['vessels'],
                 'summary': dashboard_summary,
-                'data_status': vessel_data['status'].value,
+                'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                 'last_updated': vessel_data['last_updated'],
                 'timestamp': datetime.utcnow().isoformat()
             })
@@ -102,7 +102,7 @@ def get_dashboard_data():
                     'mode': 'offline_fallback',
                     'vessels': vessel_data['vessels'],
                     'summary': dashboard_summary,
-                    'data_status': vessel_data['status'].value,
+                    'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                     'last_updated': vessel_data['last_updated'],
                     'timestamp': datetime.utcnow().isoformat(),
                     'error': 'Server unavailable, using cached data'
@@ -161,7 +161,7 @@ def get_vessel_data(vessel_id):
                 'vessel': vessel,
                 'cargo_tallies': tally_data['tallies'],
                 'is_offline_vessel': False,
-                'data_status': vessel_data['status'].value,
+                'data_status': vessel_data['status'].value if hasattr(vessel_data['status'], 'value') else str(vessel_data['status']),
                 'timestamp': datetime.utcnow().isoformat()
             })
         

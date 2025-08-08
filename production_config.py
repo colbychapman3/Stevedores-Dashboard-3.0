@@ -16,11 +16,10 @@ class ProductionConfig:
     
     # Database Configuration
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///stevedores_production.db'
+    
+    # Engine options - will be set by init_app based on database type
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_recycle': 300,
         'pool_pre_ping': True,
-        'pool_size': 10,
-        'max_overflow': 20,
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -107,6 +106,22 @@ class ProductionConfig:
     def init_app(app):
         """Initialize application with production settings"""
         
+        # Configure database engine options based on database type
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if db_uri and ('postgresql://' in db_uri or 'postgres://' in db_uri):
+            # PostgreSQL connection pooling
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+                'pool_recycle': 300,
+                'pool_pre_ping': True,
+                'pool_size': 10,
+                'max_overflow': 20,
+            }
+        else:
+            # SQLite - no pooling options
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+                'pool_pre_ping': True,
+            }
+        
         # Configure logging
         import logging
         from logging.handlers import RotatingFileHandler
@@ -173,6 +188,11 @@ class TestingConfig:
     # In-memory database for testing
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # SQLite-specific engine options (no pool settings)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+    }
     
     # Disable security for testing
     WTF_CSRF_ENABLED = False

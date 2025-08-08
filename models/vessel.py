@@ -5,19 +5,28 @@ Stores vessel information from 4-step wizard
 
 from datetime import datetime
 
+# Global cache to prevent multiple Vessel model creation
+_vessel_model_cache = None
+
 def create_vessel_model(db):
-    """Create Vessel model with database instance to avoid circular imports"""
+    """Create Vessel model with database instance to avoid circular imports and table redefinition"""
+    global _vessel_model_cache
+    
+    # Return cached model if already created to prevent redefinition
+    if _vessel_model_cache is not None:
+        return _vessel_model_cache
     
     class Vessel(db.Model):
         """Vessel model for stevedoring operations"""
         
         __tablename__ = 'vessels'
+        __table_args__ = {'extend_existing': True}
         
         id = db.Column(db.Integer, primary_key=True)
         
         # Basic vessel information (Step 1)
         name = db.Column(db.String(100), nullable=False, index=True)
-        shipping_line = db.Column(db.String(50), nullable=False, default='K-line')  # K-line, Grimaldi, Glovis, MOL
+        shipping_line = db.Column(db.String(50), nullable=True, default='K-line')  # K-line, Grimaldi, Glovis, MOL
         vessel_type = db.Column(db.String(50), nullable=False, default='Auto Only')  # Auto Only, Heavy Only, Auto + Heavy
         port_of_call = db.Column(db.String(100), nullable=False, default='Colonel Island')
         operation_start_date = db.Column(db.Date, nullable=True)
@@ -111,7 +120,9 @@ def create_vessel_model(db):
         def get_cargo_loaded(self):
             """Calculate total cargo loaded from tally records"""
             # This will be connected to cargo_tally records
-            return int(self.progress_percentage * self.total_cargo_capacity / 100)
+            progress = self.progress_percentage or 0.0
+            capacity = self.total_cargo_capacity or 0
+            return int(progress * capacity / 100)
         
         def get_cargo_remaining(self):
             """Calculate remaining cargo to load"""
@@ -201,4 +212,6 @@ def create_vessel_model(db):
             """Get vessels by status"""
             return cls.query.filter_by(status=status).all()
     
+    # Cache the model to prevent redefinition
+    _vessel_model_cache = Vessel
     return Vessel

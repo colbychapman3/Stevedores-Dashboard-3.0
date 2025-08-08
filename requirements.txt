@@ -1,33 +1,38 @@
-# Flask Core - Python 3.13 Compatible Versions
+# Flask Core - Python 3.12/3.13 compatible versions
 Flask==2.3.3
 Flask-SQLAlchemy==2.5.1
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
 
-# Database - Supabase PostgreSQL (Python 3.13 compatible)
+# Database - Supabase PostgreSQL with Python 3.13 compatibility
 SQLAlchemy==1.4.53
+# psycopg2-binary 2.9.10+ supports Python 3.13
 psycopg2-binary==2.9.10
 
 # Caching - Upstash Redis
 redis==4.6.0
 
-# Security & Rate Limiting - Updated for Python 3.13
+# Security - Enhanced maritime security stack
 Werkzeug==2.3.7
 WTForms==3.0.1
-Flask-Talisman==1.1.0
-Flask-Limiter==3.5.0
-bleach==6.1.0
-cryptography==43.0.1
-PyJWT==2.8.0
+Flask-Talisman==1.1.0  # Security headers (CSP, HSTS, etc.)
+Flask-Limiter==3.5.0   # Rate limiting and brute force protection
+bleach==6.1.0          # HTML sanitization for XSS prevention
+cryptography==45.0.5   # Cryptographic operations for secure features (Phase 4 requirement)
+PyJWT==2.8.0           # JWT token authentication for APIs
+marshmallow==3.21.0    # API request/response validation
+apispec==6.3.0         # OpenAPI specification generation
+python-magic==0.4.27   # File type detection for security
+filetype==1.2.0        # Advanced file type detection
+Pillow==10.4.0         # Image processing and validation - Python 3.13 compatible
 
-# Content Processing & Validation
-marshmallow==3.21.0
-apispec==6.3.0
-python-magic==0.4.27
-filetype==1.2.0
+# Phase 4 Maritime Data Security Dependencies
+argon2-cffi==23.1.0    # Argon2 password hashing for maritime user authentication
+bcrypt==4.1.2          # Bcrypt hashing for legacy compatibility
+pynacl==1.5.0          # NaCl cryptographic library for additional encryption options
 
-# Image Processing - FIXED: Python 3.13 Compatible Version
-Pillow==10.4.0
+# Phase 4 Advanced Cryptography Requirements  
+pycryptodome==3.20.0   # Additional cryptographic primitives for maritime security
 
 # Utilities
 python-dotenv==1.0.0

@@ -5,13 +5,22 @@ Handles individual cargo tally entries and calculations
 
 from datetime import datetime
 
+# Global cache to prevent multiple CargoTally model creation
+_cargo_tally_model_cache = None
+
 def create_cargo_tally_model(db):
-    """Create CargoTally model with database instance to avoid circular imports"""
+    """Create CargoTally model with database instance to avoid circular imports and table redefinition"""
+    global _cargo_tally_model_cache
+    
+    # Return cached model if already created to prevent redefinition
+    if _cargo_tally_model_cache is not None:
+        return _cargo_tally_model_cache
     
     class CargoTally(db.Model):
         """Cargo tally model for real-time tracking"""
         
         __tablename__ = 'cargo_tallies'
+        __table_args__ = {'extend_existing': True}
         
         id = db.Column(db.Integer, primary_key=True)
         vessel_id = db.Column(db.Integer, nullable=False, index=True)
@@ -113,4 +122,6 @@ def create_cargo_tally_model(db):
                 progress = (loaded_count / vessel.total_cargo_capacity) * 100
                 vessel.update_progress(progress)
     
+    # Cache the model to prevent redefinition
+    _cargo_tally_model_cache = CargoTally
     return CargoTally
