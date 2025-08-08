@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: stevedores-dashboard-3-0
+    env: python
+    repo: https://github.com/colbychapman3/Stevedores-Dashboard-3.0
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn_production.conf.py app:app
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: MEMORY_LIMIT_MB
+        value: 512
+      - key: WEB_WORKERS
+        value: 4
+      - key: PYTHONUNBUFFERED
+        value: 1
+    autoDeploy: true
+    healthCheckPath: /health/quick
