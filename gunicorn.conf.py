@@ -45,8 +45,7 @@ max_requests_jitter = 50
 
 print(f"🔧 Gunicorn worker configuration:")
 print(f"   Container Memory: {container_memory_mb}MB")
-print(f"   Max Workers by Memory: {max_workers_by_memory}")
-print(f"   CPU-based Workers: {cpu_workers}")
+print(f"   Calculated Workers: {calculated_workers}")
 print(f"   Final Workers: {workers}")
 
 # Timeout configuration (important for maritime operations)
