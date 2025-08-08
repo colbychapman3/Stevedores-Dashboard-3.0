@@ -6,6 +6,7 @@ Built for reliable ship operations regardless of connectivity
 
 import os
 import logging
+import time
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, make_response, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -96,6 +97,70 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
+
+# PRODUCTION FIXES: Initialize production-ready components
+if not app.config.get('TESTING', False):
+    try:
+        # Initialize Redis client with resilience patterns
+        from utils.redis_client import get_redis_client
+        redis_client = get_redis_client(app.config.get('REDIS_URL'))
+        logger.info("✅ Redis client with circuit breaker initialized")
+        
+        # Initialize security middleware (Flask-Talisman)
+        from utils.security_middleware import init_security_middleware
+        security_middleware = init_security_middleware(app)
+        logger.info("✅ Security middleware (Talisman) initialized")
+        
+        # Initialize rate limiter with fallback
+        from utils.rate_limiter import init_rate_limiter
+        rate_limiter = init_rate_limiter(app)
+        logger.info("✅ Rate limiter with fallback initialized")
+        
+        # Initialize enhanced memory monitor with config-driven settings
+        from utils.memory_monitor import init_memory_monitor
+        memory_warning = app.config.get('MEMORY_WARNING_THRESHOLD', 75.0)
+        memory_critical = app.config.get('MEMORY_CRITICAL_THRESHOLD', 85.0)
+        
+        memory_monitor = init_memory_monitor(
+            warning_threshold=memory_warning,
+            critical_threshold=memory_critical
+        )
+        logger.info(f"✅ Enhanced memory monitor initialized (Warning: {memory_warning}%, Critical: {memory_critical}%)")
+        
+        # Initialize memory leak prevention middleware
+        from utils.memory_middleware import init_memory_middleware
+        memory_middleware = init_memory_middleware(app)
+        logger.info("✅ Memory leak prevention middleware initialized")
+        
+        # Initialize comprehensive health monitor
+        from utils.health_monitor import init_health_monitor
+        health_monitor = init_health_monitor()
+        logger.info("✅ Health monitor with all checks initialized")
+        
+        # Initialize production monitoring with memory integration
+        from production_monitoring import MetricCollector
+        production_monitor = MetricCollector()
+        production_monitor.register_memory_monitor(memory_monitor)
+        
+        # Start periodic memory metrics collection
+        import threading
+        def periodic_memory_collection():
+            while True:
+                try:
+                    production_monitor.collect_memory_metrics()
+                    time.sleep(30)  # Collect metrics every 30 seconds
+                except Exception as e:
+                    logger.error(f"Periodic memory collection error: {e}")
+                    time.sleep(60)  # Longer sleep on error
+        
+        memory_collection_thread = threading.Thread(target=periodic_memory_collection, daemon=True)
+        memory_collection_thread.start()
+        
+        logger.info("✅ Production monitoring with memory integration initialized")
+        
+    except Exception as e:
+        logger.error(f"❌ Production component initialization error: {e}")
+        # Don't fail startup, but log the error
 
 # Exempt API routes from CSRF protection for offline functionality
 @csrf.exempt
@@ -362,16 +427,91 @@ def offline():
     """Offline page when no connectivity"""
     return render_template('offline.html')
 
-# Health check endpoint
+# ENHANCED Health check endpoint with dependency validation
 @app.route('/health')
 def health_check():
-    """Basic health check"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
-        'version': '3.0.0',
-        'offline_ready': True
-    }), 200
+    """Comprehensive production health check with dependency validation"""
+    try:
+        from utils.health_monitor import get_health_monitor
+        from utils.security_middleware import security_health_check
+        
+        health_monitor = get_health_monitor()
+        
+        # Run all health checks
+        result = health_monitor.run_all_checks(use_cache=True)
+        
+        # Add security middleware status
+        security_status = security_health_check()
+        
+        # Add application-specific info
+        result.update({
+            'offline_ready': True,
+            'deployment_version': DEPLOYMENT_VERSION,
+            'security_status': security_status
+        })
+        
+        # Determine HTTP status based on health
+        if result['status'] == 'healthy':
+            status_code = 200
+        elif result['status'] == 'degraded':
+            status_code = 200  # Still operational
+        else:
+            status_code = 503  # Service unavailable
+        
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return jsonify({
+            'status': 'error',
+            'timestamp': datetime.utcnow().isoformat(),
+            'error': str(e),
+            'version': '3.0.0'
+        }), 500
+
+@app.route('/health/quick')
+def quick_health_check():
+    """Quick health check for load balancers (cached)"""
+    try:
+        from utils.health_monitor import get_health_monitor
+        health_monitor = get_health_monitor()
+        result = health_monitor.get_quick_status()
+        
+        status_code = 200 if result.get('status') in ['healthy', 'degraded'] else 503
+        return jsonify(result), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'timestamp': datetime.utcnow().isoformat(),
+            'error': str(e)
+        }), 500
+
+# Security monitoring endpoints
+@app.route('/security/status')
+@login_required
+def security_status():
+    """Security status endpoint for administrators"""
+    try:
+        from utils.security_middleware import security_health_check
+        status = security_health_check()
+        return jsonify(status)
+    except Exception as e:
+        logger.error(f"Security status error: {e}")
+        return jsonify({'error': 'Failed to get security status'}), 500
+
+@app.route('/security/violations')
+@login_required
+def security_violations():
+    """Security violation report for administrators"""
+    try:
+        from utils.security_middleware import security_violation_report
+        limit = min(int(request.args.get('limit', 50)), 1000)  # Max 1000 violations
+        report = security_violation_report(limit)
+        return jsonify(report)
+    except Exception as e:
+        logger.error(f"Security violations error: {e}")
+        return jsonify({'error': 'Failed to get violation report'}), 500
 
 # Database initialization function (used by wsgi.py)
 def init_database():
@@ -575,6 +715,26 @@ app.register_blueprint(wizard_bp, url_prefix='/wizard')
 app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
+
+# Register memory monitoring routes
+from routes.memory_monitoring import register_memory_routes
+register_memory_routes(app)
+logger.info("✅ Memory monitoring routes registered")
+
+# CRITICAL FIX: Exempt health check endpoints from rate limiting
+# These endpoints must ALWAYS work for load balancers and monitoring
+if not app.config.get('TESTING', False):
+    try:
+        from utils.rate_limiter import get_rate_limiter
+        rate_limiter = get_rate_limiter()
+        if rate_limiter and rate_limiter.limiter:
+            # Exempt health and monitoring endpoints
+            rate_limiter.limiter.exempt(health_check)
+            rate_limiter.limiter.exempt(quick_health_check) 
+            rate_limiter.limiter.exempt(security_status)
+            logger.info("✅ Health check endpoints exempted from rate limiting")
+    except Exception as e:
+        logger.warning(f"⚠️  Failed to exempt health endpoints from rate limiting: {e}")
 
 # Exempt document processing, sync, offline dashboard, and auth routes from CSRF for offline functionality
 csrf.exempt(document_bp)

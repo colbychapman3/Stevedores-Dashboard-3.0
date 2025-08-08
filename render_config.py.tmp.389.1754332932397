@@ -9,11 +9,10 @@ from datetime import timedelta
 class RenderConfig:
     """Production configuration for Render deployment"""
     
-    # Basic Flask settings
-    # SECURITY FIX: Require SECRET_KEY - no hardcoded fallback for production
+    # Basic Flask settings - SECURITY FIX: Require SECRET_KEY from environment
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        raise ValueError("SECRET_KEY environment variable is required for production deployment")
+        raise ValueError("SECRET_KEY environment variable is required for security")
     DEBUG = False
     TESTING = False
     
@@ -51,9 +50,8 @@ class RenderConfig:
     SYNC_RETRY_ATTEMPTS = 3
     DOCUMENT_PROCESSING_TIMEOUT = 30
     
-    # Rate limiting - CRITICAL FIX: Use memory storage by default for reliability
-    # Redis is optional - health checks must never depend on external services
-    RATELIMIT_STORAGE_URL = 'memory://'  # Always use memory for production stability
+    # Rate limiting
+    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL')
     RATELIMIT_DEFAULT = "100 per hour"
     
     # File uploads
