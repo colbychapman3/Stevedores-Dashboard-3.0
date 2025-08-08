@@ -212,7 +212,6 @@ def init_db_retry():
 
 # Initialize after imports
 db_retry_manager = init_db_retry()
->>>>>>> 53a0d0f9afd873e53e5791b6b7d070ef3e5e9724
 
 # Exempt API routes from CSRF protection for offline functionality
 @csrf.exempt
