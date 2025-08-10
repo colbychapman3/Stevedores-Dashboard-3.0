@@ -324,40 +324,44 @@ csrf.exempt(offline_dashboard_bp)
 # SECURITY FIX: Remove CSRF exemption from auth routes to prevent CSRF attacks
 # csrf.exempt(auth_bp)  # REMOVED - auth routes should be CSRF protected
 
+# Setup logger
+logger = logging.getLogger(__name__)
 
+# Import models after db initialization
+from models.user import create_user_model
+from models.vessel import create_vessel_model
+from models.cargo_tally import create_cargo_tally_model
 
-# Database initialization function (was missing - causing startup failure)
-def init_database():
-    """Initialize database and create demo users for production deployment
-    
-    This function was missing but called by wsgi.py and test files,
-    causing ImportError on production startup.
-    """
+# Create models
+User = create_user_model(db)
+Vessel = create_vessel_model(db)
+CargoTally = create_cargo_tally_model(db)
+
+# Login manager user loader
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# Dashboard route
+@app.route('/')
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Main dashboard with vessel overview"""
     try:
-        with app.app_context():
-            # Create all tables
-            db.create_all()
-            logger.info("Database tables created successfully")
-            
-            # Create demo user if not exists
-            if not User.query.filter_by(email='demo@maritime.test').first():
-                demo_user = User(
-                    email='demo@maritime.test',
-                    username='demo_user',
-                    password_hash=generate_password_hash('demo123'),
-                    is_active=True
-                )
-                db.session.add(demo_user)
-                db.session.commit()
-                logger.info("Demo user created: demo@maritime.test / demo123")
-            else:
-                logger.info("Demo user already exists")
-            
-            return True
-            
+        vessels = Vessel.query.all()
+        vessel_data = [vessel.to_dict() for vessel in vessels]
+        
+        return render_template('dashboard.html', 
+                             vessels=vessel_data,
+                             vessel_count=len(vessels))
     except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return False
+        logger.error(f"Dashboard error: {e}")
+        flash('Error loading dashboard data', 'error')
+        return render_template('dashboard.html', vessels=[], vessel_count=0)
+
+
+
 
 
 if __name__ == '__main__':
