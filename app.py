@@ -33,7 +33,7 @@ except ImportError:
 app = Flask(__name__)
 
 # FORCE CACHE REFRESH: Production build version identifier
-DEPLOYMENT_VERSION = "3.0.6-SCHEMA-FIX-20250805"
+DEPLOYMENT_VERSION = "3.0.7-MERGE-CONFLICT-FINAL-FIX-20250810"
 print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
 
 # Early logging setup for configuration debugging
@@ -311,11 +311,13 @@ from routes.wizard import wizard_bp
 from routes.document_processing import document_bp
 from routes.sync_routes import sync_bp
 from routes.offline_dashboard import offline_dashboard_bp
+from routes.health_production import health_bp
 app.register_blueprint(auth_bp, url_prefix='/auth')
 app.register_blueprint(wizard_bp, url_prefix='/wizard')
 app.register_blueprint(document_bp, url_prefix='/document')
 app.register_blueprint(sync_bp, url_prefix='/sync')
 app.register_blueprint(offline_dashboard_bp, url_prefix='/offline-dashboard')
+app.register_blueprint(health_bp)  # No prefix - health checks at /health
 
 csrf.exempt(document_bp)
 csrf.exempt(sync_bp) 
@@ -326,6 +328,14 @@ csrf.exempt(offline_dashboard_bp)
 
 # Setup logger
 logger = logging.getLogger(__name__)
+
+# CSP Nonce function for templates
+@app.context_processor
+def inject_csp_nonce():
+    """Provide CSP nonce for templates"""
+    import secrets
+    nonce = secrets.token_urlsafe(16)
+    return dict(csp_nonce=lambda: nonce)
 
 # Import models after db initialization
 from models.user import create_user_model
