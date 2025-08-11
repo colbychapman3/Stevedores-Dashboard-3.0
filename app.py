@@ -112,6 +112,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
+login_manager.login_view = 'auth.login'
+login_manager.login_message = 'Please log in to access the dashboard.'
+login_manager.login_message_category = 'info'
 
 
 # Database initialization function (used by wsgi.py)
