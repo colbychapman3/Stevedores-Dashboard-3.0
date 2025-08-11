@@ -114,6 +114,22 @@ class InMemoryFallback:
             del self.data[key]
         if key in self.expires:
             del self.expires[key]
+    
+    def _cleanup_all_expired(self):
+        """Clean up all expired keys in background thread."""
+        with self._lock:
+            now = datetime.now()
+            expired_keys = []
+            
+            for key, expire_time in self.expires.items():
+                if now > expire_time:
+                    expired_keys.append(key)
+            
+            for key in expired_keys:
+                self._cleanup_expired(key)
+            
+            if expired_keys:
+                logger.debug(f"Cleaned up {len(expired_keys)} expired keys from memory fallback")
 
 class ProductionRedisClient:
     """Production-ready Redis client with circuit breaker and fallbacks."""
