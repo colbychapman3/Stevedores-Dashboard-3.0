@@ -359,16 +359,48 @@ def load_user(user_id):
 def dashboard():
     """Main dashboard with vessel overview"""
     try:
-        vessels = Vessel.query.all()
-        vessel_data = [vessel.to_dict() for vessel in vessels]
+        # First, ensure vessel model is created and any missing columns are added
+        from models.vessel import create_vessel_model
+        Vessel = create_vessel_model(db)
         
+        vessels = Vessel.query.all()
+        vessel_data = []
+        
+        # Safely serialize each vessel with error handling
+        for vessel in vessels:
+            try:
+                vessel_dict = vessel.to_dict()
+                vessel_data.append(vessel_dict)
+            except Exception as vessel_error:
+                logger.warning(f"Failed to serialize vessel {vessel.id}: {vessel_error}")
+                # Skip this vessel but continue with others
+                continue
+        
+        logger.info(f"Dashboard loaded successfully with {len(vessel_data)} vessels")
         return render_template('dashboard.html', 
                              vessels=vessel_data,
-                             vessel_count=len(vessels))
+                             vessel_count=len(vessel_data))
+                             
     except Exception as e:
         logger.error(f"Dashboard error: {e}")
-        flash('Error loading dashboard data', 'error')
-        return render_template('dashboard.html', vessels=[], vessel_count=0)
+        import traceback
+        logger.error(f"Dashboard error traceback: {traceback.format_exc()}")
+        
+        # Try to render dashboard with empty data instead of failing completely
+        try:
+            flash('Dashboard data temporarily unavailable. System is running in fallback mode.', 'warning')
+            return render_template('dashboard.html', vessels=[], vessel_count=0)
+        except Exception as template_error:
+            logger.error(f"Dashboard template error: {template_error}")
+            # Last resort: return a simple response
+            return f"""
+            <html><body>
+            <h1>Dashboard Temporarily Unavailable</h1>
+            <p>The system is experiencing technical difficulties. Please try again later.</p>
+            <p>Error: {str(e)}</p>
+            <a href="/auth/logout">Logout</a>
+            </body></html>
+            """, 503
 
 
 

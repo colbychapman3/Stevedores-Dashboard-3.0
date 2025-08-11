@@ -16,6 +16,20 @@ def create_vessel_model(db):
     if _vessel_model_cache is not None:
         return _vessel_model_cache
     
+    def check_column_exists(table_name, column_name):
+        """Check if a column exists in the database table"""
+        try:
+            # For PostgreSQL, check information_schema
+            result = db.engine.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s AND column_name = %s
+            """, (table_name, column_name))
+            return result.fetchone() is not None
+        except Exception:
+            # Fallback for other databases or if query fails
+            return False
+    
     class Vessel(db.Model):
         """Vessel model for stevedoring operations"""
         
@@ -146,10 +160,17 @@ def create_vessel_model(db):
                     # Return None for invalid JSON data, don't crash the whole operation
                     return None
             
+            # Safe attribute access with fallback for missing database columns
+            def safe_getattr(obj, attr, fallback=None):
+                try:
+                    return getattr(obj, attr)
+                except AttributeError:
+                    return fallback
+            
             data = {
                 'id': self.id,
                 'name': self.name,
-                'shipping_line': self.shipping_line,
+                'shipping_line': safe_getattr(self, 'shipping_line', 'K-line'),
                 'vessel_type': self.vessel_type,
                 'port_of_call': self.port_of_call,
                 'operation_start_date': self.operation_start_date.isoformat() if self.operation_start_date else None,
@@ -211,6 +232,18 @@ def create_vessel_model(db):
         def get_by_status(cls, status):
             """Get vessels by status"""
             return cls.query.filter_by(status=status).all()
+    
+    # Add missing columns if they don't exist (production database compatibility)
+    try:
+        # Check if shipping_line column exists and add it if missing
+        if not check_column_exists('vessels', 'shipping_line'):
+            db.engine.execute("""
+                ALTER TABLE vessels 
+                ADD COLUMN shipping_line VARCHAR(50) DEFAULT 'K-line'
+            """)
+            print("✅ Added missing shipping_line column to vessels table")
+    except Exception as e:
+        print(f"⚠️  Could not add shipping_line column (table may not exist yet): {e}")
     
     # Cache the model to prevent redefinition
     _vessel_model_cache = Vessel
