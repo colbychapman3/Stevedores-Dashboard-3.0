@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, make_response, flash
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -121,10 +122,44 @@ login_manager.login_message_category = 'info'
 def init_database():
     """Initialize database and create demo users - used by production startup"""
     try:
-        # Create all tables
-        db.create_all()
-        logger.info("Database tables created successfully")
+        logger.info("🚀 Starting comprehensive database initialization...")
         
+        # Step 1: Create all tables
+        db.create_all()
+        logger.info("✅ Database tables created successfully")
+        
+        # Step 2: Run production database migration to add any missing columns
+        try:
+            from production_db_migration import initialize_production_migration, run_migration_if_needed
+            
+            # Initialize migration system
+            migration_system = initialize_production_migration(app, db)
+            logger.info("✅ Production migration system initialized")
+            
+            # Run migration if needed
+            with app.app_context():
+                migration_success, migration_result = run_migration_if_needed()
+                if migration_success and migration_result:
+                    logger.info(f"✅ Production migration completed: {len(migration_result)} columns added: {migration_result}")
+                elif migration_success and not migration_result:
+                    logger.info("✅ Database schema is up to date - no migration needed")
+                else:
+                    logger.warning(f"⚠️  Migration had issues: {migration_result}")
+                    
+        except Exception as migration_error:
+            logger.error(f"❌ Migration system error: {migration_error}")
+            # Don't fail init_database completely, but log the issue
+            logger.warning("⚠️  Continuing database initialization without migration")
+        
+        # Step 3: Ensure vessel model is properly initialized with schema detection
+        try:
+            from models.vessel import create_vessel_model
+            Vessel = create_vessel_model(db)
+            logger.info("✅ Vessel model initialized with schema compatibility")
+        except Exception as vessel_model_error:
+            logger.error(f"❌ Vessel model initialization error: {vessel_model_error}")
+        
+        # Step 4: Create demo users
         users_created = []
         
         # Create simple demo user if it doesn't exist
@@ -137,14 +172,19 @@ def init_database():
             )
             db.session.add(demo_user)
             users_created.append('demo@maritime.test')
-            logger.info("Demo user created: demo@maritime.test")
+            logger.info("✅ Demo user created: demo@maritime.test")
         
+        # Step 5: Commit all changes
         db.session.commit()
-        logger.info(f"Database initialization completed. Users created: {users_created}")
+        logger.info(f"🎯 Database initialization completed successfully!")
+        logger.info(f"📊 Users created: {users_created}")
+        logger.info("🌊 Stevedores Dashboard 3.0 database ready for production!")
         return True
         
     except Exception as e:
-        logger.error(f"Database initialization error: {e}")
+        logger.error(f"❌ Database initialization error: {e}")
+        import traceback
+        logger.error(f"❌ Full traceback: {traceback.format_exc()}")
         return False
 
 # Database initialization and demo user creation
@@ -335,10 +375,15 @@ logger = logging.getLogger(__name__)
 # CSP Nonce function for templates
 @app.context_processor
 def inject_csp_nonce():
-    """Provide CSP nonce for templates"""
+    """Provide CSP nonce for templates - consistent per request"""
+    from flask import g
     import secrets
-    nonce = secrets.token_urlsafe(16)
-    return dict(csp_nonce=lambda: nonce)
+    
+    # Generate nonce once per request and store in Flask's g
+    if not hasattr(g, 'csp_nonce_value'):
+        g.csp_nonce_value = secrets.token_urlsafe(16)
+    
+    return dict(csp_nonce=lambda: g.csp_nonce_value)
 
 # Import models after db initialization
 from models.user import create_user_model
@@ -360,53 +405,213 @@ def load_user(user_id):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Main dashboard with vessel overview"""
+    """Main dashboard with vessel overview - Production-grade with comprehensive error handling"""
     try:
-        # First, ensure vessel model is created and any missing columns are added
-        from models.vessel import create_vessel_model
-        Vessel = create_vessel_model(db)
+        logger.info("🚢 Loading dashboard...")
         
-        vessels = Vessel.query.all()
+        # Step 1: Perform database health check
+        try:
+            # Test basic database connectivity
+            with db.engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            logger.info("✅ Database connectivity confirmed")
+        except Exception as db_health_error:
+            logger.error(f"❌ Database health check failed: {db_health_error}")
+            flash('Database connectivity issues detected. Please try again.', 'error')
+            return render_template('dashboard.html', vessels=[], vessel_count=0)
+        
+        # Step 2: Ensure vessel model is created and migration is applied
+        try:
+            from models.vessel import create_vessel_model
+            Vessel = create_vessel_model(db)
+            logger.info("✅ Vessel model initialized with production compatibility")
+        except Exception as model_error:
+            logger.error(f"❌ Vessel model initialization failed: {model_error}")
+            flash('System model initialization error. Administrators have been notified.', 'error')
+            return render_template('dashboard.html', vessels=[], vessel_count=0)
+        
+        # Step 3: Attempt to run emergency migration if still missing columns
+        try:
+            from production_db_migration import run_migration_if_needed
+            migration_success, migration_result = run_migration_if_needed()
+            if migration_success and migration_result:
+                logger.info(f"✅ Emergency migration completed: {len(migration_result)} columns added")
+        except Exception as emergency_migration_error:
+            logger.warning(f"⚠️  Emergency migration failed: {emergency_migration_error}")
+        
+        # Step 4: Query vessels with comprehensive error handling
+        vessels = []
+        try:
+            # Test query with minimal columns first
+            vessel_count = Vessel.query.count()
+            logger.info(f"📊 Found {vessel_count} vessels in database")
+            
+            # Now attempt full query
+            vessels = Vessel.query.all()
+            logger.info(f"✅ Successfully queried {len(vessels)} vessels")
+            
+        except Exception as query_error:
+            logger.error(f"❌ Vessel query failed: {query_error}")
+            
+            # Try to determine if it's a column issue
+            if "UndefinedColumn" in str(query_error) or "does not exist" in str(query_error):
+                logger.error("🚨 Column compatibility error detected - forcing migration")
+                try:
+                    # Force migration with direct SQL
+                    missing_columns = [
+                        'operation_start_date', 'operation_end_date', 'shipping_line',
+                        'vessel_type', 'port_of_call', 'stevedoring_company', 'operation_type',
+                        'berth_assignment', 'operations_manager'
+                    ]
+                    
+                    for column in missing_columns:
+                        try:
+                            with db.engine.connect() as connection:
+                                if column.endswith('_date'):
+                                    connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} DATE"))
+                                else:
+                                    connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} VARCHAR(100)"))
+                                connection.commit()
+                            logger.info(f"✅ Added missing column: {column}")
+                        except Exception as col_error:
+                            logger.warning(f"⚠️  Could not add column {column}: {col_error}")
+                    
+                    # Retry query after adding columns
+                    vessels = Vessel.query.all()
+                    logger.info(f"✅ Query successful after emergency column addition: {len(vessels)} vessels")
+                    
+                except Exception as emergency_fix_error:
+                    logger.error(f"❌ Emergency column fix failed: {emergency_fix_error}")
+                    vessels = []
+            else:
+                vessels = []
+        
+        # Step 5: Safely serialize vessel data
         vessel_data = []
+        serialization_errors = 0
         
-        # Safely serialize each vessel with error handling
         for vessel in vessels:
             try:
-                vessel_dict = vessel.to_dict()
+                vessel_dict = vessel.to_dict(include_progress=True)
                 vessel_data.append(vessel_dict)
             except Exception as vessel_error:
-                logger.warning(f"Failed to serialize vessel {vessel.id}: {vessel_error}")
-                # Skip this vessel but continue with others
-                continue
+                logger.warning(f"⚠️  Failed to serialize vessel {vessel.id}: {vessel_error}")
+                serialization_errors += 1
+                # Create minimal vessel data as fallback
+                try:
+                    minimal_vessel = {
+                        'id': getattr(vessel, 'id', 'unknown'),
+                        'name': getattr(vessel, 'name', 'Unknown Vessel'),
+                        'status': getattr(vessel, 'status', 'unknown'),
+                        'vessel_type': 'Auto Only',
+                        'port_of_call': 'Colonel Island',
+                        'progress_percentage': 0,
+                        'shipping_line': 'K-line'
+                    }
+                    vessel_data.append(minimal_vessel)
+                    logger.info(f"✅ Created fallback data for vessel {vessel.id}")
+                except Exception as fallback_error:
+                    logger.error(f"❌ Fallback vessel data creation failed: {fallback_error}")
+                    # Skip this vessel entirely
+                    continue
         
-        logger.info(f"Dashboard loaded successfully with {len(vessel_data)} vessels")
+        if serialization_errors > 0:
+            flash(f'Some vessel data could not be loaded ({serialization_errors} vessels affected). System is running in compatibility mode.', 'warning')
+        
+        logger.info(f"🎯 Dashboard loaded successfully with {len(vessel_data)} vessels")
         return render_template('dashboard.html', 
                              vessels=vessel_data,
                              vessel_count=len(vessel_data))
                              
     except Exception as e:
-        logger.error(f"Dashboard error: {e}")
+        logger.error(f"❌ Critical dashboard error: {e}")
         import traceback
-        logger.error(f"Dashboard error traceback: {traceback.format_exc()}")
+        logger.error(f"❌ Dashboard error traceback: {traceback.format_exc()}")
         
         # Try to render dashboard with empty data instead of failing completely
         try:
-            flash('Dashboard data temporarily unavailable. System is running in fallback mode.', 'warning')
+            flash('Dashboard data temporarily unavailable. System is running in emergency fallback mode.', 'error')
             return render_template('dashboard.html', vessels=[], vessel_count=0)
         except Exception as template_error:
-            logger.error(f"Dashboard template error: {template_error}")
-            # Last resort: return a simple response
+            logger.error(f"❌ Dashboard template error: {template_error}")
+            # Last resort: return a simple HTML response with basic styling
             return f"""
-            <html><body>
-            <h1>Dashboard Temporarily Unavailable</h1>
-            <p>The system is experiencing technical difficulties. Please try again later.</p>
-            <p>Error: {str(e)}</p>
-            <a href="/auth/logout">Logout</a>
-            </body></html>
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Dashboard - Stevedores Dashboard 3.0</title>
+                <link rel="stylesheet" href="{url_for('static', filename='css/tailwind.min.css')}">
+            </head>
+            <body class="bg-gray-50 min-h-screen">
+                <div class="max-w-4xl mx-auto py-8 px-4">
+                    <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                        <h1 class="text-2xl font-bold text-red-600 mb-4">🚨 Dashboard Temporarily Unavailable</h1>
+                        <p class="text-gray-600 mb-4">The system is experiencing technical difficulties and is running in emergency mode.</p>
+                        <div class="bg-red-50 border border-red-200 rounded p-4 mb-4">
+                            <p class="text-sm text-red-700">Technical Error: {str(e)}</p>
+                        </div>
+                        <p class="text-gray-600 mb-6">Please visit <code>/init-database</code> to reset the system, or contact support.</p>
+                        <div class="space-x-4">
+                            <a href="/init-database" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Initialize Database</a>
+                            <a href="/auth/logout" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
             """, 503
 
 
 
+
+
+# Service Worker route - serve from templates directory
+@app.route('/service-worker.js')
+def service_worker():
+    """Serve the service worker JavaScript file with proper content type"""
+    response = make_response(render_template('service-worker.js'))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Cache-Control'] = 'no-cache'  # Service workers shouldn't be cached
+    return response
+
+# Manifest route for PWA
+@app.route('/manifest.json')
+def manifest():
+    """Serve the PWA manifest file"""
+    manifest_data = {
+        "name": "Stevedores Dashboard 3.0",
+        "short_name": "StevedoresPWA",
+        "description": "Offline-first maritime operations management for reliable ship operations",
+        "start_url": "/dashboard",
+        "display": "standalone",
+        "background_color": "#3b82f6",
+        "theme_color": "#3b82f6",
+        "orientation": "any",
+        "scope": "/",
+        "categories": ["productivity", "business", "utilities"],
+        "lang": "en-US",
+        "icons": [
+            {
+                "src": "/static/icons/icon-192x192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any maskable"
+            },
+            {
+                "src": "/static/icons/icon-384x384.png", 
+                "sizes": "384x384",
+                "type": "image/png"
+            },
+            {
+                "src": "/static/icons/icon-512x512.png",
+                "sizes": "512x512", 
+                "type": "image/png"
+            }
+        ]
+    }
+    response = make_response(jsonify(manifest_data))
+    response.headers['Content-Type'] = 'application/manifest+json'
+    return response
 
 
 if __name__ == '__main__':

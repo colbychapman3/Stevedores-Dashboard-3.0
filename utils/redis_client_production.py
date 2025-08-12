@@ -146,35 +146,102 @@ class ProductionRedisClient:
         self.rate_limit_counters = defaultdict(int)
         self.rate_limit_windows = defaultdict(float)
         
+        # Connection attempt throttling
+        self.last_connection_attempt = 0
+        self.connection_failure_count = 0
+        self.max_retry_interval = 300  # 5 minutes max
+        self.base_retry_interval = 60  # Start with 1 minute
+        self.last_failure_type = None
+        
+        # Logging throttling
+        self.last_log_time = 0
+        self.log_interval = 300  # Log Redis issues max every 5 minutes
+        self.failure_count_since_log = 0
+        
+        # Periodic recovery
+        self.last_recovery_attempt = 0
+        self.recovery_interval = 300  # Try recovery every 5 minutes
+        
         self._initialize_redis()
         self._start_cleanup_thread()
     
     def _initialize_redis(self):
-        """Initialize Redis connection with production settings."""
+        """Initialize Redis connection with production settings and enhanced error handling."""
         if not self.redis_url:
-            logger.warning("No Redis URL configured, using fallback mode only")
+            self._log_throttled("⚠️  No Redis URL configured, using fallback mode only", 'warning')
             self.fallback_mode = True
             return
         
-        try:
-            self._redis_client = redis.from_url(
-                self.redis_url,
-                max_connections=20,
-                retry_on_timeout=True,
-                socket_keepalive=True,
-                health_check_interval=30,
-                decode_responses=True
-            )
+        # Check if Redis URL looks valid
+        if not self.redis_url.startswith(('redis://', 'rediss://')):
+            self._log_throttled(f"❌ Invalid Redis URL format: {self.redis_url}", 'error')
+            self.fallback_mode = True
+            return
+        
+        # Implement connection attempt throttling
+        current_time = time.time()
+        
+        # Check if we should throttle connection attempts
+        if self.last_connection_attempt > 0:
+            retry_interval = self._calculate_retry_interval()
+            time_since_last_attempt = current_time - self.last_connection_attempt
             
-            # Test connection
+            if time_since_last_attempt < retry_interval:
+                # Skip connection attempt - too soon since last failure
+                if not self.fallback_mode:
+                    self._log_throttled(f"🔄 Redis connection throttled - waiting {retry_interval - time_since_last_attempt:.1f}s", 'debug')
+                    self.fallback_mode = True
+                return
+        
+        self.last_connection_attempt = current_time
+        logger.info(f"🔗 Attempting Redis connection to: {self.redis_url.split('@')[-1] if '@' in self.redis_url else 'local'}")
+        
+        try:
+            # Enhanced Redis configuration for production stability
+            connection_params = {
+                'max_connections': 20,
+                'retry_on_timeout': True,
+                'socket_keepalive': True,
+                'socket_keepalive_options': {},
+                'health_check_interval': 30,
+                'decode_responses': True,
+                'socket_timeout': 5,  # 5 second socket timeout
+                'socket_connect_timeout': 10,  # 10 second connection timeout
+                'connection_pool_kwargs': {
+                    'retry_on_timeout': True,
+                    'max_connections': 20,
+                }
+            }
+            
+            # Add SSL configuration for rediss:// URLs
+            if self.redis_url.startswith('rediss://'):
+                connection_params['ssl_cert_reqs'] = None
+                connection_params['ssl_check_hostname'] = False
+                logger.info("🔒 Using SSL/TLS Redis connection")
+            
+            self._redis_client = redis.from_url(self.redis_url, **connection_params)
+            
+            # Test connection with timeout
             self._redis_client.ping()
             self.connected = True
-            logger.info("Production Redis connection established")
+            self.connection_failure_count = 0  # Reset failure count on success
+            logger.info("✅ Production Redis connection established successfully")
+            
+        except redis.ConnectionError as conn_error:
+            self._handle_connection_failure('connection_error', str(conn_error))
+            
+        except redis.TimeoutError as timeout_error:
+            self._handle_connection_failure('timeout_error', str(timeout_error))
             
         except Exception as e:
-            logger.warning(f"Redis connection failed: {e}")
-            self.connected = False
-            self.fallback_mode = True
+            # Categorize the error type for better handling
+            error_msg = str(e).lower()
+            if "name or service not known" in error_msg:
+                self._handle_connection_failure('dns_error', str(e))
+            elif "connection refused" in error_msg:
+                self._handle_connection_failure('connection_refused', str(e))
+            else:
+                self._handle_connection_failure('unknown_error', str(e))
     
     def _start_cleanup_thread(self):
         """Start background cleanup thread."""
@@ -190,8 +257,121 @@ class ProductionRedisClient:
         cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
         cleanup_thread.start()
     
+    def _calculate_retry_interval(self) -> float:
+        """Calculate exponential backoff retry interval with jitter."""
+        if self.connection_failure_count == 0:
+            return self.base_retry_interval
+        
+        # Exponential backoff with jitter
+        interval = min(
+            self.base_retry_interval * (2 ** self.connection_failure_count),
+            self.max_retry_interval
+        )
+        
+        # Add jitter (±20% randomization)
+        import random
+        jitter = interval * 0.2 * (random.random() - 0.5)
+        
+        return max(self.base_retry_interval, interval + jitter)
+    
+    def _handle_connection_failure(self, failure_type: str, error_message: str):
+        """Handle Redis connection failures with enhanced logging and tracking."""
+        self.connected = False
+        self.fallback_mode = True
+        self.last_failure_type = failure_type
+        self.connection_failure_count += 1
+        self.failure_count_since_log += 1
+        
+        # Enhanced logging based on failure type
+        if failure_type == 'dns_error':
+            self._log_throttled(
+                f"🌐 Redis DNS resolution failed (attempt {self.connection_failure_count}): {error_message}",
+                'warning'
+            )
+            if self.failure_count_since_log == 1:  # First failure gets more detail
+                logger.info("🌐 This may be due to network connectivity or DNS configuration issues")
+                logger.info("🛡️ Application will continue with in-memory fallback until Redis is available")
+                
+        elif failure_type == 'connection_refused':
+            self._log_throttled(
+                f"🔌 Redis server connection refused (attempt {self.connection_failure_count}): {error_message}",
+                'warning'
+            )
+            
+        elif failure_type == 'timeout_error':
+            self._log_throttled(
+                f"⏱️  Redis connection timeout (attempt {self.connection_failure_count}): {error_message}",
+                'warning'
+            )
+            
+        else:
+            self._log_throttled(
+                f"⚠️  Redis connection failed with {failure_type} (attempt {self.connection_failure_count}): {error_message}",
+                'warning'
+            )
+    
+    def _log_throttled(self, message: str, level: str = 'info'):
+        """Log messages with throttling to reduce spam."""
+        current_time = time.time()
+        
+        # For the first failure, always log immediately
+        if self.failure_count_since_log == 1 or current_time - self.last_log_time >= self.log_interval:
+            
+            if self.failure_count_since_log > 1:
+                # Add summary of repeated failures
+                summary_msg = f"{message} (Total failures since last log: {self.failure_count_since_log})"
+            else:
+                summary_msg = message
+            
+            # Log at appropriate level
+            if level == 'error':
+                logger.error(summary_msg)
+            elif level == 'warning':
+                logger.warning(summary_msg)
+            elif level == 'info':
+                logger.info(summary_msg)
+            elif level == 'debug':
+                logger.debug(summary_msg)
+            
+            self.last_log_time = current_time
+            self.failure_count_since_log = 0  # Reset counter after logging
+    
+    def _should_attempt_recovery(self) -> bool:
+        """Check if we should attempt Redis connection recovery."""
+        if not self.fallback_mode:
+            return False  # Not in fallback mode, no need for recovery
+        
+        current_time = time.time()
+        return current_time - self.last_recovery_attempt >= self.recovery_interval
+    
+    def _attempt_recovery(self):
+        """Attempt to recover Redis connection if in fallback mode."""
+        if not self._should_attempt_recovery():
+            return False
+        
+        self.last_recovery_attempt = time.time()
+        logger.debug("🔄 Attempting Redis connection recovery...")
+        
+        # Temporarily reset failure count for recovery attempt
+        old_failure_count = self.connection_failure_count
+        self.connection_failure_count = 0
+        
+        self._initialize_redis()
+        
+        if self.connected and not self.fallback_mode:
+            logger.info("✅ Redis connection recovered successfully!")
+            return True
+        else:
+            # Restore failure count if recovery failed
+            self.connection_failure_count = old_failure_count
+            return False
+    
     def set(self, key: str, value: str, ex: Optional[int] = None) -> bool:
-        """Set with fallback."""
+        """Set with fallback and recovery attempt."""
+        # Attempt recovery if appropriate
+        if self.fallback_mode:
+            self._attempt_recovery()
+        
         if self.fallback_mode:
             return self.fallback.set(key, value, ex)
         
@@ -201,11 +381,16 @@ class ProductionRedisClient:
             )
             return result
         except Exception as e:
-            logger.warning(f"Redis SET failed, using fallback: {e}")
+            self._log_throttled(f"Redis SET operation failed, using fallback: {e}", 'debug')
+            self._handle_connection_failure('operation_error', str(e))
             return self.fallback.set(key, value, ex)
     
     def get(self, key: str) -> Optional[str]:
-        """Get with fallback."""
+        """Get with fallback and recovery attempt."""
+        # Attempt recovery if appropriate
+        if self.fallback_mode:
+            self._attempt_recovery()
+        
         if self.fallback_mode:
             return self.fallback.get(key)
         
@@ -213,11 +398,16 @@ class ProductionRedisClient:
             result = self.circuit_breaker.call(self._redis_client.get, key)
             return result
         except Exception as e:
-            logger.warning(f"Redis GET failed, using fallback: {e}")
+            self._log_throttled(f"Redis GET operation failed, using fallback: {e}", 'debug')
+            self._handle_connection_failure('operation_error', str(e))
             return self.fallback.get(key)
     
     def incr(self, key: str, amount: int = 1) -> int:
-        """Increment with fallback."""
+        """Increment with fallback and recovery attempt."""
+        # Attempt recovery if appropriate
+        if self.fallback_mode:
+            self._attempt_recovery()
+        
         if self.fallback_mode:
             return self.fallback.incr(key, amount)
         
@@ -227,26 +417,39 @@ class ProductionRedisClient:
             )
             return result
         except Exception as e:
-            logger.warning(f"Redis INCR failed, using fallback: {e}")
+            self._log_throttled(f"Redis INCR operation failed, using fallback: {e}", 'debug')
+            self._handle_connection_failure('operation_error', str(e))
             return self.fallback.incr(key, amount)
     
     def ping(self) -> bool:
-        """Health check ping."""
+        """Health check ping with throttled recovery attempts."""
+        # Attempt recovery only if it's time to try
         if self.fallback_mode:
-            return False
+            if self._should_attempt_recovery():
+                return self._attempt_recovery()
+            return False  # Don't attempt Redis ping if in fallback mode
         
         try:
             result = self.circuit_breaker.call(self._redis_client.ping)
             return result
-        except Exception:
+        except Exception as e:
+            self._log_throttled(f"Redis PING failed: {e}", 'debug')
+            self._handle_connection_failure('ping_error', str(e))
             return False
     
     def get_status(self) -> Dict[str, Any]:
-        """Get Redis status information."""
+        """Get comprehensive Redis status information."""
+        current_time = time.time()
         return {
             'redis_connected': self.connected and not self.fallback_mode,
             'fallback_mode': self.fallback_mode,
             'circuit_breaker_state': self.circuit_breaker.state,
+            'connection_failure_count': self.connection_failure_count,
+            'last_failure_type': self.last_failure_type,
+            'time_since_last_attempt': current_time - self.last_connection_attempt if self.last_connection_attempt > 0 else 0,
+            'next_retry_in': max(0, self._calculate_retry_interval() - (current_time - self.last_connection_attempt)) if self.last_connection_attempt > 0 else 0,
+            'time_since_last_recovery': current_time - self.last_recovery_attempt if self.last_recovery_attempt > 0 else 0,
+            'failures_since_log': self.failure_count_since_log,
             'failure_count': self.circuit_breaker.failure_count,
             'status': 'healthy' if self.connected else 'degraded'
         }
