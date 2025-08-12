@@ -1249,6 +1249,136 @@ function nextStep(step) {
     }
 }
 
+// MISSING FUNCTIONS - Critical for wizard submission
+function gatherAllFormData() {
+    const formData = {};
+    
+    // Step 1: Vessel Information
+    formData.vesselName = document.getElementById('vesselName')?.value || '';
+    formData.shippingLine = document.getElementById('shippingLine')?.value || '';
+    formData.vesselType = document.getElementById('vesselType')?.value || '';
+    formData.port = document.getElementById('port')?.value || 'Colonel Island';
+    formData.operationStartDate = document.getElementById('operationStartDate')?.value || '';
+    formData.operationEndDate = document.getElementById('operationEndDate')?.value || '';
+    formData.stevedoringCompany = document.getElementById('stevedoringCompany')?.value || 'APS Stevedoring';
+    formData.operationType = document.getElementById('operationType')?.value || '';
+    formData.berthAssignment = document.getElementById('berthAssignment')?.value || '';
+    formData.operationsManager = document.getElementById('operationsManager')?.value || '';
+    
+    // Step 2: Cargo Configuration
+    formData.dischargeTotalAutos = document.getElementById('dischargeTotalAutos')?.value || '0';
+    formData.loadingTotalAutos = document.getElementById('loadingTotalAutos')?.value || '0';
+    formData.loadbackTotalAutos = document.getElementById('loadbackTotalAutos')?.value || '0';
+    
+    // Step 3: Team Assignments
+    formData.totalDrivers = document.getElementById('totalDrivers')?.value || '0';
+    formData.shiftStartTime = document.getElementById('shiftStartTime')?.value || '';
+    formData.shiftEndTime = document.getElementById('shiftEndTime')?.value || '';
+    formData.shipStartTime = document.getElementById('shipStartTime')?.value || '';
+    formData.shipCompleteTime = document.getElementById('shipCompleteTime')?.value || '';
+    formData.numberOfBreaks = document.getElementById('numberOfBreaks')?.value || '0';
+    formData.targetCompletion = document.getElementById('targetCompletion')?.value || '';
+    
+    // Step 4: TICO Transportation
+    formData.numberOfVans = document.getElementById('numberOfVans')?.value || '0';
+    formData.numberOfWagons = document.getElementById('numberOfWagons')?.value || '0';
+    formData.numberOfLowDecks = document.getElementById('numberOfLowDecks')?.value || '0';
+    
+    // Include document source if available
+    if (wizardData.documentSource) {
+        formData.documentSource = wizardData.documentSource;
+    }
+    
+    console.log('Gathered form data:', formData);
+    return formData;
+}
+
+function showSubmissionSuccess(data) {
+    console.log('Wizard submission successful:', data);
+    
+    // Hide submission modal
+    document.getElementById('submissionModal')?.classList.add('hidden');
+    
+    // Show success message
+    const successMessage = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 max-w-md mx-4">
+                <div class="text-center">
+                    <div class="text-green-500 text-6xl mb-4">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Success!</h2>
+                    <p class="text-gray-600 mb-6">${data.message || 'Vessel operation created successfully!'}</p>
+                    <div class="space-y-3">
+                        <button onclick="window.location.href='/dashboard'" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            View Dashboard
+                        </button>
+                        <button onclick="window.location.href='${data.redirect_url || '/dashboard'}'" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            View Vessel Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', successMessage);
+    
+    // Auto-redirect after 3 seconds
+    setTimeout(() => {
+        window.location.href = data.redirect_url || '/dashboard';
+    }, 3000);
+}
+
+function handleOfflineSubmission(formData) {
+    console.log('Handling offline submission with sync manager');
+    
+    // Store in localStorage for sync when online
+    const offlineSubmissions = JSON.parse(localStorage.getItem('offlineVesselSubmissions') || '[]');
+    const submission = {
+        id: 'offline_' + Date.now(),
+        formData: formData,
+        timestamp: new Date().toISOString(),
+        status: 'pending_sync'
+    };
+    
+    offlineSubmissions.push(submission);
+    localStorage.setItem('offlineVesselSubmissions', JSON.stringify(offlineSubmissions));
+    
+    // Hide submission modal
+    document.getElementById('submissionModal')?.classList.add('hidden');
+    
+    // Show offline success message
+    const offlineMessage = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 max-w-md mx-4">
+                <div class="text-center">
+                    <div class="text-orange-500 text-6xl mb-4">
+                        <i class="fas fa-wifi-slash"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Saved Offline</h2>
+                    <p class="text-gray-600 mb-6">Your vessel operation has been saved locally and will sync when connection returns.</p>
+                    <button onclick="window.location.href='/dashboard'" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Continue to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', offlineMessage);
+    
+    // Trigger sync manager if available
+    if (window.syncManager) {
+        window.syncManager.addPendingSubmission(submission);
+    }
+    
+    // Auto-redirect after 3 seconds
+    setTimeout(() => {
+        window.location.href = '/dashboard';
+    }, 3000);
+}
+
 // Event Listeners for Conditional Logic
 document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners for conditional updates
