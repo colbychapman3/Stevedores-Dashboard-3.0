@@ -51,7 +51,7 @@
             <div class="flex items-center">
                 <i class="fas fa-clock text-orange-500 text-2xl mr-4"></i>
                 <div>
-                    <p class="text-sm text-gray-600">Expected Vessels</p>
+                    <p class="text-sm text-gray-600">Expected Arrivals</p>
                     <p class="text-2xl font-bold text-gray-900">{{ vessels|selectattr("status", "equalto", "expected")|list|length }}</p>
                 </div>
             </div>
@@ -61,159 +61,105 @@
             <div class="flex items-center">
                 <i class="fas fa-check-circle text-purple-500 text-2xl mr-4"></i>
                 <div>
-                    <p class="text-sm text-gray-600">Completed Today</p>
+                    <p class="text-sm text-gray-600">Completed</p>
                     <p class="text-2xl font-bold text-gray-900">{{ vessels|selectattr("status", "equalto", "operations_complete")|list|length }}</p>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Vessels List -->
-    <div class="bg-white rounded-lg shadow-md">
+    <!-- Vessels Table -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
             <h2 class="text-xl font-semibold text-gray-900">
-                <i class="fas fa-list mr-2"></i>
-                Vessel Operations
+                <i class="fas fa-list-ul text-blue-600 mr-2"></i>
+                Current Vessels ({{ vessel_count }})
             </h2>
         </div>
         
-        <div class="p-6">
-            {% if vessels %}
-                <div class="overflow-x-auto">
-                    <table class="min-w-full table-auto">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">Vessel Name</th>
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">Type</th>
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">Status</th>
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">Progress</th>
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">ETA/ETD</th>
-                                <th class="px-4 py-2 text-left text-sm font-semibold text-gray-900">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            {% for vessel in vessels %}
-                            <tr class="hover:bg-gray-50 transition duration-200">
-                                <td class="px-4 py-3">
-                                    <div class="flex items-center">
-                                        <i class="fas fa-ship text-blue-500 mr-2"></i>
-                                        <span class="font-medium text-gray-900">{{ vessel.name }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600">{{ vessel.vessel_type }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="px-2 py-1 text-xs rounded-full 
-                                        {% if vessel.status == 'operations_active' %}bg-green-100 text-green-800
-                                        {% elif vessel.status == 'berthed' %}bg-blue-100 text-blue-800
-                                        {% elif vessel.status == 'expected' %}bg-yellow-100 text-yellow-800
-                                        {% elif vessel.status == 'operations_complete' %}bg-purple-100 text-purple-800
-                                        {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                        {{ vessel.status.replace('_', ' ').title() }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex items-center">
-                                        <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
-                                            <div class="bg-blue-600 h-2 rounded-full" style="width: {{ vessel.progress_percentage }}%"></div>
-                                        </div>
-                                        <span class="text-sm text-gray-600">{{ "%.1f"|format(vessel.progress_percentage) }}%</span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600">
-                                    {% if vessel.eta %}
-                                        <div>ETA: {{ vessel.eta.strftime('%m/%d %H:%M') }}</div>
-                                    {% endif %}
-                                    {% if vessel.etd %}
-                                        <div>ETD: {{ vessel.etd.strftime('%m/%d %H:%M') }}</div>
-                                    {% endif %}
-                                </td>
-                                <td class="px-4 py-3">
-                                    <a href="/vessel/{{ vessel.id }}" class="text-blue-600 hover:text-blue-800 transition duration-200">
-                                        <i class="fas fa-eye mr-1"></i>
-                                        View Details
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="text-center py-12">
-                    <i class="fas fa-ship text-gray-400 text-4xl mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No Vessel Operations</h3>
-                    <p class="text-gray-600 mb-6">Create your first vessel operation to get started.</p>
-                    <a href="/wizard" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
-                        <i class="fas fa-plus mr-2"></i>
-                        Create Vessel Operation
-                    </a>
-                </div>
-            {% endif %}
+        {% if vessels %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vessel</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Port</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for vessel in vessels %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <i class="fas fa-ship text-blue-500 mr-2"></i>
+                                <div class="text-sm font-medium text-gray-900">{{ vessel.name }}</div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ vessel.vessel_type or 'Auto Only' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ vessel.port_of_call or 'Colonel Island' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% set status = vessel.status %}
+                            {% if status == 'expected' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    Expected
+                                </span>
+                            {% elif status == 'arrived' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    Arrived
+                                </span>
+                            {% elif status == 'berthed' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                                    Berthed
+                                </span>
+                            {% elif status == 'operations_active' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Operations Active
+                                </span>
+                            {% elif status == 'operations_complete' %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                    Complete
+                                </span>
+                            {% else %}
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    {{ status|title }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-600 h-2 rounded-full" style="width: {{ vessel.progress_percentage or 0 }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500 mt-1">{{ vessel.progress_percentage or 0 }}% complete</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <a href="/vessel/{{ vessel.id }}" class="text-blue-600 hover:text-blue-900">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
-    
-    <!-- Quick Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                <i class="fas fa-clipboard-list text-blue-500 mr-2"></i>
-                Quick Actions
-            </h3>
-            <div class="space-y-3">
-                <a href="/wizard" class="block w-full text-left px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-200">
-                    <i class="fas fa-plus mr-2 text-blue-600"></i>
-                    New Vessel Operation
-                </a>
-                <a href="/cargo-tally" class="block w-full text-left px-4 py-2 bg-green-50 hover:bg-green-100 rounded-lg transition duration-200">
-                    <i class="fas fa-calculator mr-2 text-green-600"></i>
-                    Quick Cargo Tally
-                </a>
-                <a href="/reports" class="block w-full text-left px-4 py-2 bg-purple-50 hover:bg-purple-100 rounded-lg transition duration-200">
-                    <i class="fas fa-chart-bar mr-2 text-purple-600"></i>
-                    View Reports
-                </a>
-            </div>
+        {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-ship text-gray-400 text-4xl mb-4"></i>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No vessels found</h3>
+            <p class="text-gray-500 mb-4">Start by creating your first vessel operation.</p>
+            <a href="/wizard" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                <i class="fas fa-plus mr-2"></i>
+                Create First Vessel
+            </a>
         </div>
-        
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                <i class="fas fa-info-circle text-orange-500 mr-2"></i>
-                System Status
-            </h3>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Connection</span>
-                    <span id="connection-status" class="text-sm font-medium text-green-600">Online</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Data Sync</span>
-                    <span id="sync-status-text" class="text-sm font-medium text-green-600">Up to date</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Offline Mode</span>
-                    <span class="text-sm font-medium text-blue-600">Available</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                <i class="fas fa-user text-gray-500 mr-2"></i>
-                User Info
-            </h3>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-sm text-gray-600">Last Login</span>
-                    <span class="text-sm text-gray-600">
-                        {% if current_user.last_login %}
-                            {{ current_user.last_login.strftime('%m/%d %H:%M') }}
-                        {% else %}
-                            First login
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -221,54 +167,28 @@
     // Update current time
     function updateTime() {
         const now = new Date();
-        document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        const options = { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+        };
+        document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', options);
     }
     
-    // Update connection and sync status
-    function updateDashboardStatus() {
-        const connectionStatus = document.getElementById('connection-status');
-        const syncStatusText = document.getElementById('sync-status-text');
-        
-        if (navigator.onLine) {
-            connectionStatus.textContent = 'Online';
-            connectionStatus.className = 'text-sm font-medium text-green-600';
-            syncStatusText.textContent = 'Up to date';
-            syncStatusText.className = 'text-sm font-medium text-green-600';
-        } else {
-            connectionStatus.textContent = 'Offline';
-            connectionStatus.className = 'text-sm font-medium text-red-600';
-            syncStatusText.textContent = 'Pending sync';
-            syncStatusText.className = 'text-sm font-medium text-yellow-600';
-        }
-    }
-    
-    // Auto-refresh vessel counts (when online)
-    async function refreshVesselCounts() {
-        if (navigator.onLine) {
-            try {
-                const response = await fetch('/api/vessels/summary');
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('active-vessels-count').textContent = data.active || 0;
-                }
-            } catch (error) {
-                console.log('Failed to refresh vessel counts:', error);
-            }
-        }
-    }
-    
-    // Event listeners
-    window.addEventListener('online', updateDashboardStatus);
-    window.addEventListener('offline', updateDashboardStatus);
-    
-    // Initialize
+    // Update time immediately and every second
     updateTime();
-    updateDashboardStatus();
-    
-    // Update time every second
     setInterval(updateTime, 1000);
     
-    // Refresh data every 30 seconds when online
-    setInterval(refreshVesselCounts, 30000);
+    // Update active vessels count periodically
+    function updateActiveVesselsCount() {
+        // This would typically make an AJAX call to get updated counts
+        // For now, we'll just refresh the page every 30 seconds
+        setTimeout(() => {
+            window.location.reload();
+        }, 30000);
+    }
+    
+    updateActiveVesselsCount();
 </script>
 {% endblock %}

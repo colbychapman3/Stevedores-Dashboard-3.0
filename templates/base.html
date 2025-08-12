@@ -29,32 +29,7 @@
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="320">
     
-    <!-- Critical styles inline for immediate render -->
-    <style>
-        /* Reset and base styles */
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
-        .bg-blue-600 { background-color: #2563eb !important; }
-        .text-white { color: white !important; }
-        .px-4 { padding-left: 1rem; padding-right: 1rem; }
-        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-        .rounded { border-radius: 0.25rem; }
-        .shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); }
-        .max-w-7xl { max-width: 80rem; }
-        .mx-auto { margin-left: auto; margin-right: auto; }
-        .flex { display: flex; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .space-x-4 > :not(:last-child) { margin-right: 1rem; }
-        .text-xl { font-size: 1.25rem; }
-        .font-bold { font-weight: 700; }
-        .text-2xl { font-size: 1.5rem; }
-        .mr-3 { margin-right: 0.75rem; }
-        .hover\\:text-blue-200:hover { color: #bfdbfe; }
-        .h-16 { height: 4rem; }
-    </style>
-    
-    <!-- Load full Tailwind after critical styles -->
+    <!-- Offline-first styling -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     
