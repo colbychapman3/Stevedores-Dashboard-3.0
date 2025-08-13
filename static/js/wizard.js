@@ -40,7 +40,46 @@ function initializeWizard() {
     setupDocumentUpload();
     
     // Setup form submission handler
-    document.getElementById('vesselWizardForm').addEventListener('submit', handleFormSubmission);
+    const wizardForm = document.getElementById('vesselWizardForm');
+    if (wizardForm) {
+        wizardForm.addEventListener('submit', handleFormSubmission);
+    } else {
+        console.error('Wizard form not found - wizard may not function properly');
+    }
+    
+    // Setup conditional logic event listeners
+    const shippingLineField = document.getElementById('shippingLine');
+    if (shippingLineField) {
+        shippingLineField.addEventListener('change', updateVesselTypeOptions);
+    }
+    
+    const operationTypeField = document.getElementById('operationType');
+    if (operationTypeField) {
+        operationTypeField.addEventListener('change', updateStep3Configuration);
+    }
+    
+    const vesselTypeField = document.getElementById('vesselType');
+    if (vesselTypeField) {
+        vesselTypeField.addEventListener('change', updateStep3HeavyEquipment);
+    }
+    
+    const numberOfVansField = document.getElementById('numberOfVans');
+    if (numberOfVansField) {
+        numberOfVansField.addEventListener('change', updateVanList);
+    }
+    
+    const numberOfWagonsField = document.getElementById('numberOfWagons');
+    if (numberOfWagonsField) {
+        numberOfWagonsField.addEventListener('change', function() {
+            updateWagonList();
+            checkLowDeckWarning();
+        });
+    }
+    
+    const numberOfLowDecksField = document.getElementById('numberOfLowDecks');
+    if (numberOfLowDecksField) {
+        numberOfLowDecksField.addEventListener('change', checkLowDeckWarning);
+    }
     
     console.log('Vessel wizard initialized with offline document processing support');
 }
@@ -618,22 +657,7 @@ function handleOfflineSubmission(formData) {
     document.getElementById('submissionModal').classList.add('hidden');
 }
 
-function gatherAllFormData() {
-    const formData = {};
-    const inputs = document.querySelectorAll('#vesselWizardForm input, #vesselWizardForm select');
-    
-    inputs.forEach(input => {
-        if (input.name || input.id) {
-            formData[input.name || input.id] = input.value;
-        }
-    });
-    
-    // Add metadata
-    formData.documentSource = wizardData.documentSource;
-    formData.timestamp = new Date().toISOString();
-    
-    return formData;
-}
+// REMOVED DUPLICATE: gatherAllFormData function already defined later in file
 
 function saveForOfflineSubmission(formData) {
     const offlineSubmissions = JSON.parse(localStorage.getItem('offlineVesselSubmissions') || '[]');
@@ -644,22 +668,7 @@ function saveForOfflineSubmission(formData) {
     localStorage.setItem('offlineVesselSubmissions', JSON.stringify(offlineSubmissions));
 }
 
-function showSubmissionSuccess(data) {
-    document.getElementById('submissionLoading').classList.add('hidden');
-    document.getElementById('submissionSuccess').classList.remove('hidden');
-    
-    // Clear saved wizard data
-    localStorage.removeItem('vesselWizardData');
-    
-    // Redirect after a delay
-    setTimeout(() => {
-        if (data.redirect_url) {
-            window.location.href = data.redirect_url;
-        } else {
-            window.location.href = '/dashboard';
-        }
-    }, 2000);
-}
+// REMOVED DUPLICATE: showSubmissionSuccess function already defined later in file
 
 function closeModal() {
     document.getElementById('submissionModal').classList.add('hidden');
@@ -1379,33 +1388,6 @@ function handleOfflineSubmission(formData) {
     }, 3000);
 }
 
-// Event Listeners for Conditional Logic
-document.addEventListener('DOMContentLoaded', function() {
-    // Add event listeners for conditional updates
-    const shippingLineField = document.getElementById('shippingLine');
-    if (shippingLineField) {
-        shippingLineField.addEventListener('change', updateVesselTypeOptions);
-    }
-    
-    const operationTypeField = document.getElementById('operationType');
-    if (operationTypeField) {
-        operationTypeField.addEventListener('change', updateStep3Configuration);
-    }
-    
-    const vesselTypeField = document.getElementById('vesselType');
-    if (vesselTypeField) {
-        vesselTypeField.addEventListener('change', updateStep3HeavyEquipment);
-    }
-    
-    const numberOfWagonsField = document.getElementById('numberOfWagons');
-    if (numberOfWagonsField) {
-        numberOfWagonsField.addEventListener('change', checkLowDeckWarning);
-    }
-    
-    const numberOfLowDecksField = document.getElementById('numberOfLowDecks');
-    if (numberOfLowDecksField) {
-        numberOfLowDecksField.addEventListener('change', checkLowDeckWarning);
-    }
-});
+// REMOVED DUPLICATE: Event listeners already added in initializeWizard() function
 
 console.log('Enhanced wizard with offline document processing loaded');
