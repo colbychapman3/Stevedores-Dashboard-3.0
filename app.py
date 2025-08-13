@@ -461,20 +461,32 @@ def dashboard():
                     missing_columns = [
                         'operation_start_date', 'operation_end_date', 'shipping_line',
                         'vessel_type', 'port_of_call', 'stevedoring_company', 'operation_type',
-                        'berth_assignment', 'operations_manager'
+                        'berth_assignment', 'operations_manager', 'team_assignments', 'cargo_configuration'
                     ]
                     
-                    for column in missing_columns:
+                    with db.engine.connect() as connection:
+                        # Start a transaction for all column additions
+                        trans = connection.begin()
                         try:
-                            with db.engine.connect() as connection:
-                                if column.endswith('_date'):
-                                    connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} DATE"))
-                                else:
-                                    connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} VARCHAR(100)"))
-                                connection.commit()
-                            logger.info(f"✅ Added missing column: {column}")
-                        except Exception as col_error:
-                            logger.warning(f"⚠️  Could not add column {column}: {col_error}")
+                            for column in missing_columns:
+                                try:
+                                    if column.endswith('_date'):
+                                        connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} DATE"))
+                                    elif column in ['team_assignments', 'cargo_configuration']:
+                                        connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} TEXT"))
+                                    else:
+                                        connection.execute(text(f"ALTER TABLE vessels ADD COLUMN IF NOT EXISTS {column} VARCHAR(100)"))
+                                    logger.info(f"✅ Added missing column: {column}")
+                                except Exception as col_error:
+                                    logger.warning(f"⚠️  Could not add column {column}: {col_error}")
+                                    # Continue with other columns even if one fails
+                            
+                            trans.commit()
+                            logger.info("✅ Database migration transaction completed")
+                        except Exception as trans_error:
+                            trans.rollback()
+                            logger.error(f"❌ Migration transaction failed, rolled back: {trans_error}")
+                            raise trans_error
                     
                     # Retry query after adding columns
                     vessels = Vessel.query.all()

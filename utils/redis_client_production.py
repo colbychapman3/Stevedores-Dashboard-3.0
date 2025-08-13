@@ -199,18 +199,14 @@ class ProductionRedisClient:
         try:
             # Enhanced Redis configuration for production stability
             connection_params = {
-                'max_connections': 20,
-                'retry_on_timeout': True,
                 'socket_keepalive': True,
                 'socket_keepalive_options': {},
                 'health_check_interval': 30,
                 'decode_responses': True,
                 'socket_timeout': 5,  # 5 second socket timeout
                 'socket_connect_timeout': 10,  # 10 second connection timeout
-                'connection_pool_kwargs': {
-                    'retry_on_timeout': True,
-                    'max_connections': 20,
-                }
+                'retry_on_timeout': True,
+                'max_connections': 20
             }
             
             # Add SSL configuration for rediss:// URLs

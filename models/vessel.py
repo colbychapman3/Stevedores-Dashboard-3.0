@@ -20,13 +20,14 @@ def create_vessel_model(db):
     def check_column_exists(table_name, column_name):
         """Check if a column exists in the database table"""
         try:
-            # For PostgreSQL, check information_schema
-            result = db.engine.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = %s AND column_name = %s
-            """, (table_name, column_name))
-            return result.fetchone() is not None
+            # For PostgreSQL, check information_schema (SQLAlchemy 2.x compatible)
+            with db.engine.connect() as connection:
+                result = connection.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = :table_name AND column_name = :column_name
+                """), {'table_name': table_name, 'column_name': column_name})
+                return result.fetchone() is not None
         except Exception:
             # Fallback for other databases or if query fails
             return False
@@ -278,28 +279,32 @@ def create_vessel_model(db):
     try:
         from production_db_migration import initialize_production_migration, run_migration_if_needed
         
-        # Initialize migration system
-        migration_system = initialize_production_migration(db.metadata.bind, db)
-        
-        # Run comprehensive migration if needed
-        success, result = run_migration_if_needed()
-        if success and result:
-            print(f"✅ Production migration completed: {len(result)} columns added")
-        elif not success:
-            print(f"⚠️  Migration issue: {result}")
-        else:
-            print("✅ Database schema is up to date")
+        # Initialize migration system with Flask app context
+        from flask import current_app
+        if current_app:
+            migration_system = initialize_production_migration(current_app, db)
+            
+            # Run comprehensive migration if needed
+            success, result = run_migration_if_needed()
+            if success and result:
+                print(f"✅ Production migration completed: {len(result)} columns added")
+            elif not success:
+                print(f"⚠️  Migration issue: {result}")
+            else:
+                print("✅ Database schema is up to date")
             
     except Exception as e:
         print(f"⚠️  Migration system not available: {e}")
         
-        # Fallback to basic column check for critical columns
+        # Fallback to basic column check for critical columns (SQLAlchemy 2.x compatible)
         try:
             if not check_column_exists('vessels', 'shipping_line'):
-                db.engine.execute(text("""
-                    ALTER TABLE vessels 
-                    ADD COLUMN shipping_line VARCHAR(50) DEFAULT 'K-line'
-                """))
+                with db.engine.connect() as connection:
+                    connection.execute(text("""
+                        ALTER TABLE vessels 
+                        ADD COLUMN shipping_line VARCHAR(50) DEFAULT 'K-line'
+                    """))
+                    connection.commit()
                 print("✅ Added missing shipping_line column (fallback)")
         except Exception as fallback_error:
             print(f"⚠️  Fallback migration failed: {fallback_error}")
