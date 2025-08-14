@@ -81,6 +81,10 @@ function initializeWizard() {
         numberOfLowDecksField.addEventListener('change', checkLowDeckWarning);
     }
     
+    // Initialize team members with default values
+    updateTeamMembers('autoOperations');  // Initialize with 1 member (default selected)
+    updateTeamMembers('highHeavy');       // Initialize high/heavy team
+    
     console.log('Vessel wizard initialized with offline document processing support');
 }
 
@@ -243,9 +247,12 @@ function validateStep2() {
     const autoMembers = parseInt(getValue('autoOperationsMembers')) || 0;
     const highHeavyMembers = parseInt(getValue('highHeavyMembers')) || 0;
     
+    console.log('Step 2 validation - Auto members:', autoMembers, 'High/Heavy members:', highHeavyMembers);
+    
     // Validate that at least one team member is assigned for auto operations
     if (autoMembers === 0) {
-        showValidationError('autoOperationsMembers', 'At least one auto operations team member is required');
+        showValidationError('autoOperationsMembers', 'Please select at least 1 team member for auto operations');
+        console.log('Step 2 validation failed: No auto operations members selected');
         return false;
     }
     
@@ -254,8 +261,11 @@ function validateStep2() {
         const memberValue = getValue(`autoOperationsMember${i}`);
         const customValue = getValue(`autoOperationsMemberCustom${i}`);
         
+        console.log(`Validating auto member ${i}: value="${memberValue}", custom="${customValue}"`);
+        
         if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
-            showValidationError(`autoOperationsMember${i}`, `Auto operations member ${i} is required`);
+            showValidationError(`autoOperationsMember${i}`, `Please select a name for auto operations member ${i}`);
+            console.log(`Step 2 validation failed: Auto member ${i} not selected`);
             return false;
         }
     }
