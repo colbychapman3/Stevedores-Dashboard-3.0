@@ -85,6 +85,9 @@ function initializeWizard() {
     updateTeamMembers('autoOperations');  // Initialize with 1 member (default selected)
     updateTeamMembers('highHeavy');       // Initialize high/heavy team
     
+    // Initialize vessel type options for default K-line selection
+    updateVesselTypeOptions();
+    
     console.log('Vessel wizard initialized with offline document processing support');
 }
 
@@ -190,43 +193,61 @@ function validateStep1() {
     const berthAssignment = getValue('berthAssignment');
     const operationsManager = getValue('operationsManager');
     
+    console.log('Step 1 validation - Field values:');
+    console.log('  vesselName:', vesselName);
+    console.log('  shippingLine:', shippingLine);
+    console.log('  vesselType:', vesselType);
+    console.log('  operationStartDate:', operationStartDate);
+    console.log('  operationEndDate:', operationEndDate);
+    console.log('  operationType:', operationType);
+    console.log('  berthAssignment:', berthAssignment);
+    console.log('  operationsManager:', operationsManager);
+    
     if (!vesselName.trim()) {
-        showValidationError('vesselName', 'Vessel name is required');
+        console.log('Step 1 validation failed: Vessel name is empty');
+        showValidationError('vesselName', 'Vessel name is required', 1);
         return false;
     }
     
     if (!shippingLine) {
-        showValidationError('shippingLine', 'Shipping line is required');
+        console.log('Step 1 validation failed: Shipping line not selected');
+        showValidationError('shippingLine', 'Shipping line is required', 1);
         return false;
     }
     
     if (!vesselType) {
-        showValidationError('vesselType', 'Vessel type is required');
+        console.log('Step 1 validation failed: Vessel type not selected');
+        showValidationError('vesselType', 'Vessel type is required', 1);
         return false;
     }
     
     if (!operationStartDate) {
-        showValidationError('operationStartDate', 'Operation start date is required');
+        console.log('Step 1 validation failed: Operation start date not set');
+        showValidationError('operationStartDate', 'Operation start date is required', 1);
         return false;
     }
     
     if (!operationEndDate) {
-        showValidationError('operationEndDate', 'Operation end date is required');
+        console.log('Step 1 validation failed: Operation end date not set');
+        showValidationError('operationEndDate', 'Operation end date is required', 1);
         return false;
     }
     
     if (!operationType) {
-        showValidationError('operationType', 'Operation type is required');
+        console.log('Step 1 validation failed: Operation type not selected');
+        showValidationError('operationType', 'Operation type is required', 1);
         return false;
     }
     
     if (!berthAssignment) {
-        showValidationError('berthAssignment', 'Berth assignment is required');
+        console.log('Step 1 validation failed: Berth assignment not selected');
+        showValidationError('berthAssignment', 'Berth assignment is required', 1);
         return false;
     }
     
     if (!operationsManager) {
-        showValidationError('operationsManager', 'Operations manager is required');
+        console.log('Step 1 validation failed: Operations manager not selected');
+        showValidationError('operationsManager', 'Operations manager is required', 1);
         return false;
     }
     
@@ -235,10 +256,12 @@ function validateStep1() {
     const endDate = new Date(operationEndDate);
     
     if (endDate < startDate) {
-        showValidationError('operationEndDate', 'End date cannot be before start date');
+        console.log('Step 1 validation failed: End date is before start date');
+        showValidationError('operationEndDate', 'End date cannot be before start date', 1);
         return false;
     }
     
+    console.log('Step 1 validation passed successfully');
     return true;
 }
 
