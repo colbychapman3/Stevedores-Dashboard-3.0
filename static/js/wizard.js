@@ -264,8 +264,12 @@ function validateStep2() {
         console.log(`Validating auto member ${i}: value="${memberValue}", custom="${customValue}"`);
         
         if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
-            showValidationError(`autoOperationsMember${i}`, `Please select a name for auto operations member ${i}`);
-            console.log(`Step 2 validation failed: Auto member ${i} not selected`);
+            if (!memberValue) {
+                showValidationError(`autoOperationsMember${i}`, `Please select a team member name for Member ${i}`);
+            } else {
+                showValidationError(`autoOperationsMemberCustom${i}`, `Please enter a custom name for Member ${i}`);
+            }
+            console.log(`Step 2 validation failed: Auto member ${i} - value: "${memberValue}", custom: "${customValue}"`);
             return false;
         }
     }
@@ -1266,7 +1270,7 @@ function updateTeamMembers(teamType) {
             <select id="${teamType}Member${i}" name="${teamType}Member${i}" onchange="handleMemberSelection('${teamType}', ${i})"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option value="">Select Member</option>
-                <option value="Colby">Colby</option>
+                <option value="Colby" selected>Colby</option>
                 <option value="Spencer">Spencer</option>
                 <option value="Cole">Cole</option>
                 <option value="Bruce">Bruce</option>
