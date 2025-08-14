@@ -1194,19 +1194,26 @@ function updateVesselTypeOptions() {
     const vesselType = document.getElementById('vesselType');
     const kLineOptions = document.querySelectorAll('.k-line-only');
     
-    // Reset vessel type selection
-    vesselType.value = '';
-    
     if (shippingLine === 'K-line') {
         // Show all options for K-line
         kLineOptions.forEach(option => {
             option.style.display = 'block';
         });
+        
+        // Set default to "Auto + Heavy" if no selection made
+        if (!vesselType.value) {
+            vesselType.value = 'Auto + Heavy';
+        }
     } else if (['Grimaldi', 'Glovis', 'MOL'].includes(shippingLine)) {
         // Hide Heavy Only and Auto + Heavy for other lines
         kLineOptions.forEach(option => {
             option.style.display = 'none';
         });
+        
+        // Reset to Auto Only for non-K-line if currently set to K-line specific options
+        if (vesselType.value === 'Auto + Heavy' || vesselType.value === 'Heavy Only') {
+            vesselType.value = 'Auto Only';
+        }
     }
     
     // Update Step 2 visibility based on shipping line
