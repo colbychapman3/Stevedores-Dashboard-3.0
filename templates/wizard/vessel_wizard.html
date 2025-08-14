@@ -171,6 +171,17 @@
                     <i class="fas fa-ship text-blue-600 mr-3"></i>Step 1: Vessel Information
                 </h2>
                 
+                <!-- Step 1 Validation Errors -->
+                <div id="step1-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step1-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
+                
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h3 class="text-lg font-semibold text-blue-900 mb-4">
@@ -316,6 +327,17 @@
                     <i class="fas fa-users text-blue-600 mr-3"></i>Step 2: Stevedore Team Assignment
                 </h2>
                 
+                <!-- Step 2 Validation Errors -->
+                <div id="step2-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step2-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
+                
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h3 class="text-lg font-semibold text-blue-900 mb-4">
@@ -425,6 +447,17 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-boxes text-blue-600 mr-3"></i>Step 3: Cargo Configuration
                 </h2>
+                
+                <!-- Step 3 Validation Errors -->
+                <div id="step3-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step3-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
                 
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -592,6 +625,17 @@
                     <i class="fas fa-cog text-blue-600 mr-3"></i>Step 4: Operational Parameters
                 </h2>
                 
+                <!-- Step 4 Validation Errors -->
+                <div id="step4-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step4-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
+                
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h3 class="text-lg font-semibold text-blue-900 mb-4">
@@ -682,6 +726,17 @@
                             <input type="datetime-local" id="targetCompletion" name="targetCompletion"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
+                    </div>
+                </div>
+
+                <!-- Review Summary Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-clipboard-check text-blue-600 mr-2"></i>Review Your Configuration
+                    </h3>
+                    <div id="reviewSummary" class="bg-white rounded-lg p-4">
+                        <!-- Review summary will be populated by JavaScript -->
+                        <p class="text-gray-500 text-center">Complete the operational parameters below to generate review summary</p>
                     </div>
                 </div>
 

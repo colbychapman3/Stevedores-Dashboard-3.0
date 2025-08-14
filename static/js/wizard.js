@@ -93,6 +93,13 @@ function nextStep(step) {
         updateStepIndicators(step, step + 1);
         currentStep = step + 1;
         
+        // Apply conditional logic when entering steps
+        if (step + 1 === 2) {
+            updateStep2Visibility();
+        } else if (step + 1 === 3) {
+            updateStep3Configuration();
+        }
+        
         if (step === 3) {
             generateReviewSummary();
         }
@@ -116,19 +123,40 @@ function showStep(step) {
 }
 
 function updateStepIndicators(fromStep, toStep) {
-    // Update from step
-    const fromIndicator = document.getElementById(`step${fromStep}-indicator`);
-    fromIndicator.classList.remove('step-active');
-    if (toStep > fromStep) {
-        fromIndicator.classList.add('step-completed');
-    } else {
-        fromIndicator.classList.remove('step-completed');
+    // Reset all indicators first
+    for (let i = 1; i <= 4; i++) {
+        const indicator = document.getElementById(`step${i}-indicator`);
+        indicator.classList.remove('step-active', 'step-completed');
+        indicator.querySelector('i').className = indicator.querySelector('i').className.replace(/fa-check.*?(?=\s|$)/, 'fa-check');
     }
     
-    // Update to step
+    // Mark completed steps
+    for (let i = 1; i < toStep; i++) {
+        const indicator = document.getElementById(`step${i}-indicator`);
+        indicator.classList.add('step-completed');
+        // Change icon to checkmark for completed steps
+        const icon = indicator.querySelector('i');
+        icon.className = icon.className.replace(/fa-\w+/, 'fa-check-circle');
+    }
+    
+    // Mark active step
     const toIndicator = document.getElementById(`step${toStep}-indicator`);
     toIndicator.classList.add('step-active');
-    toIndicator.classList.remove('step-completed');
+    
+    // Update step text opacity for better visual feedback
+    for (let i = 1; i <= 4; i++) {
+        const indicator = document.getElementById(`step${i}-indicator`);
+        if (i < toStep) {
+            indicator.classList.remove('text-white/60');
+            indicator.classList.add('text-white');
+        } else if (i === toStep) {
+            indicator.classList.remove('text-white/60');
+            indicator.classList.add('text-white');
+        } else {
+            indicator.classList.remove('text-white');
+            indicator.classList.add('text-white/60');
+        }
+    }
 }
 
 // Step Validation
@@ -335,12 +363,12 @@ function validateStep4() {
     return true;
 }
 
-function showValidationError(fieldId, message) {
+function showValidationError(fieldId, message, stepNumber = null) {
     const field = document.getElementById(fieldId);
     if (field) {
         field.classList.add('validation-error');
         
-        // Create or update error message
+        // Create or update inline error message
         let errorEl = document.getElementById(`${fieldId}-error`);
         if (!errorEl) {
             errorEl = document.createElement('div');
@@ -349,6 +377,29 @@ function showValidationError(fieldId, message) {
             field.parentNode.appendChild(errorEl);
         }
         errorEl.textContent = message;
+    }
+    
+    // Add error to step-specific error area if step number is provided
+    if (stepNumber && currentStep) {
+        const stepErrorsContainer = document.getElementById(`step${currentStep}-errors`);
+        const stepErrorsList = document.getElementById(`step${currentStep}-error-list`);
+        
+        if (stepErrorsContainer && stepErrorsList) {
+            stepErrorsContainer.classList.remove('hidden');
+            
+            // Create error item
+            const errorItem = document.createElement('li');
+            errorItem.textContent = message;
+            errorItem.id = `step-error-${fieldId}`;
+            
+            // Remove existing error for this field
+            const existingError = document.getElementById(`step-error-${fieldId}`);
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            stepErrorsList.appendChild(errorItem);
+        }
     }
     
     // Show general alert
@@ -361,10 +412,24 @@ function clearValidationErrors() {
         el.classList.remove('validation-error');
     });
     
-    // Remove error messages
+    // Remove inline error messages
     document.querySelectorAll('[id$="-error"]').forEach(el => {
         el.remove();
     });
+    
+    // Clear step-specific error areas
+    for (let i = 1; i <= 4; i++) {
+        const stepErrorsContainer = document.getElementById(`step${i}-errors`);
+        const stepErrorsList = document.getElementById(`step${i}-error-list`);
+        
+        if (stepErrorsContainer) {
+            stepErrorsContainer.classList.add('hidden');
+        }
+        
+        if (stepErrorsList) {
+            stepErrorsList.innerHTML = '';
+        }
+    }
 }
 
 // Auto-save functionality for offline support
@@ -550,43 +615,134 @@ function populateFormFromExtractedData(data) {
 function generateReviewSummary() {
     const summary = document.getElementById('reviewSummary');
     
+    if (!summary) {
+        console.error('Review summary element not found');
+        return;
+    }
+    
+    // Step 1: Vessel Information
     const vesselName = getValue('vesselName');
+    const shippingLine = getValue('shippingLine');
     const vesselType = getValue('vesselType');
     const port = getValue('port');
-    const operationDate = getValue('operationDate');
-    const totalAutomobiles = getValue('totalAutomobiles') || '0';
-    const heavyEquipment = getValue('heavyEquipment') || '0';
-    const shiftStart = getValue('shiftStart');
-    const shiftEnd = getValue('shiftEnd');
-    const driversAssigned = getValue('driversAssigned') || '0';
-    const ticoVehicles = getValue('ticoVehicles') || '0';
+    const operationStartDate = getValue('operationStartDate');
+    const operationEndDate = getValue('operationEndDate');
+    const operationType = getValue('operationType');
+    const berthAssignment = getValue('berthAssignment');
+    const operationsManager = getValue('operationsManager');
+    
+    // Step 2: Cargo Configuration
+    const dischargeTotalAutos = parseInt(getValue('dischargeTotalAutos')) || 0;
+    const dischargeHeavy = parseInt(getValue('dischargeHeavy')) || 0;
+    const loadingTotalAutos = parseInt(getValue('loadingTotalAutos')) || 0;
+    const loadingHeavy = parseInt(getValue('loadingHeavy')) || 0;
+    const loadbackTotalAutos = parseInt(getValue('loadbackTotalAutos')) || 0;
+    const loadbackHeavy = parseInt(getValue('loadbackHeavy')) || 0;
+    
+    // Step 3: Team Assignments
+    const totalDrivers = getValue('totalDrivers');
+    const shiftStartTime = getValue('shiftStartTime');
+    const shiftEndTime = getValue('shiftEndTime');
+    const shipStartTime = getValue('shipStartTime');
+    const shipCompleteTime = getValue('shipCompleteTime');
+    const autoOperationsMembers = getValue('autoOperationsMembers');
+    const highHeavyMembers = getValue('highHeavyMembers');
+    
+    // Step 4: TICO Transportation
+    const numberOfVans = getValue('numberOfVans');
+    const numberOfWagons = getValue('numberOfWagons');
+    const numberOfLowDecks = getValue('numberOfLowDecks');
+    
+    // Calculate totals
+    const totalAutos = dischargeTotalAutos + loadingTotalAutos + loadbackTotalAutos;
+    const totalHeavy = dischargeHeavy + loadingHeavy + loadbackHeavy;
+    const totalTicoVehicles = parseInt(numberOfVans) + parseInt(numberOfWagons) + parseInt(numberOfLowDecks);
     
     summary.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Vessel Information</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-blue-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                    <i class="fas fa-ship text-blue-600 mr-2"></i>Vessel Information
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Name:</strong> ${vesselName}</div>
-                    <div><strong>Type:</strong> ${vesselType}</div>
-                    <div><strong>Port:</strong> ${port}</div>
-                    <div><strong>Date:</strong> ${formatDate(operationDate)}</div>
+                    <div><strong>Name:</strong> ${vesselName || 'Not specified'}</div>
+                    <div><strong>Shipping Line:</strong> ${shippingLine || 'Not specified'}</div>
+                    <div><strong>Type:</strong> ${vesselType || 'Not specified'}</div>
+                    <div><strong>Port:</strong> ${port || 'Colonel Island'}</div>
+                    <div><strong>Operation:</strong> ${operationType || 'Not specified'}</div>
+                    <div><strong>Berth:</strong> ${berthAssignment || 'Not specified'}</div>
+                    <div><strong>Manager:</strong> ${operationsManager || 'Not specified'}</div>
+                    <div><strong>Start Date:</strong> ${formatDate(operationStartDate) || 'Not set'}</div>
+                    <div><strong>End Date:</strong> ${formatDate(operationEndDate) || 'Not set'}</div>
                 </div>
             </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Cargo Configuration</h3>
+            
+            <div class="bg-green-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-green-900 mb-3 flex items-center">
+                    <i class="fas fa-boxes text-green-600 mr-2"></i>Cargo Summary
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Automobiles:</strong> ${totalAutomobiles}</div>
-                    <div><strong>Heavy Equipment:</strong> ${heavyEquipment}</div>
-                    <div><strong>Cargo Type:</strong> ${getValue('cargoType') || 'Automobile'}</div>
+                    <div><strong>Total Automobiles:</strong> <span class="text-lg font-bold text-green-700">${totalAutos}</span></div>
+                    <div><strong>Total Heavy Equipment:</strong> <span class="text-lg font-bold text-green-700">${totalHeavy}</span></div>
+                    <hr class="my-2">
+                    ${dischargeTotalAutos > 0 ? `<div><strong>Discharge Autos:</strong> ${dischargeTotalAutos} (${dischargeHeavy} heavy)</div>` : ''}
+                    ${loadingTotalAutos > 0 ? `<div><strong>Loading Autos:</strong> ${loadingTotalAutos} (${loadingHeavy} heavy)</div>` : ''}
+                    ${loadbackTotalAutos > 0 ? `<div><strong>Loadback Autos:</strong> ${loadbackTotalAutos} (${loadbackHeavy} heavy)</div>` : ''}
                 </div>
             </div>
-            <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Operations</h3>
+            
+            <div class="bg-purple-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                    <i class="fas fa-users text-purple-600 mr-2"></i>Operations Team
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Shift:</strong> ${shiftStart || 'Not set'} - ${shiftEnd || 'Not set'}</div>
-                    <div><strong>Drivers:</strong> ${driversAssigned}</div>
-                    <div><strong>TICO Vehicles:</strong> ${ticoVehicles}</div>
+                    <div><strong>Total Drivers:</strong> <span class="text-lg font-bold text-purple-700">${totalDrivers || '0'}</span></div>
+                    <div><strong>Auto Operations:</strong> ${autoOperationsMembers || '0'} members</div>
+                    <div><strong>High & Heavy:</strong> ${highHeavyMembers || '0'} members</div>
+                    <hr class="my-2">
+                    <div><strong>Shift:</strong> ${shiftStartTime || 'Not set'} - ${shiftEndTime || 'Not set'}</div>
+                    <div><strong>Ship Operations:</strong> ${shipStartTime || 'Not set'} - ${shipCompleteTime || 'Not set'}</div>
                 </div>
+            </div>
+            
+            <div class="bg-orange-50 rounded-lg p-4">
+                <h3 class="text-lg font-semibold text-orange-900 mb-3 flex items-center">
+                    <i class="fas fa-truck text-orange-600 mr-2"></i>TICO Transportation
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div><strong>Total Vehicles:</strong> <span class="text-lg font-bold text-orange-700">${totalTicoVehicles}</span></div>
+                    <hr class="my-2">
+                    ${numberOfVans > 0 ? `<div><strong>Vans:</strong> ${numberOfVans}</div>` : ''}
+                    ${numberOfWagons > 0 ? `<div><strong>Wagons:</strong> ${numberOfWagons}</div>` : ''}
+                    ${numberOfLowDecks > 0 ? `<div><strong>Low Decks:</strong> ${numberOfLowDecks}</div>` : ''}
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 rounded-lg p-4 md:col-span-2 lg:col-span-1">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                    <i class="fas fa-clipboard-check text-gray-600 mr-2"></i>Operation Status
+                </h3>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        <span>Configuration Complete</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-clock text-yellow-500 mr-2"></i>
+                        <span>Ready for Submission</span>
+                    </div>
+                    <div class="bg-white rounded border p-2 mt-3">
+                        <div class="text-xs text-gray-600 mb-1">Summary Generated:</div>
+                        <div class="text-xs">${new Date().toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6 p-4 bg-blue-100 border border-blue-200 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                <span class="text-blue-800 font-semibold">Review your configuration above before submitting the vessel operation.</span>
             </div>
         </div>
     `;
@@ -1236,29 +1392,9 @@ function checkLowDeckWarning() {
     }
 }
 
-// Enhanced Navigation with Conditional Logic
-function nextStep(step) {
-    if (validateStep(step)) {
-        saveStepData(step);
-        hideStep(step);
-        showStep(step + 1);
-        updateStepIndicators(step, step + 1);
-        currentStep = step + 1;
-        
-        // Apply conditional logic when entering steps
-        if (step + 1 === 2) {
-            updateStep2Visibility();
-        } else if (step + 1 === 3) {
-            updateStep3Configuration();
-        }
-        
-        if (step === 3) {
-            generateReviewSummary();
-        }
-    }
-}
+// Enhanced Navigation with Conditional Logic is now handled in the main nextStep function above
 
-// MISSING FUNCTIONS - Critical for wizard submission
+// ENHANCED FORM DATA COLLECTION - Comprehensive wizard submission
 function gatherAllFormData() {
     const formData = {};
     
@@ -1274,12 +1410,60 @@ function gatherAllFormData() {
     formData.berthAssignment = document.getElementById('berthAssignment')?.value || '';
     formData.operationsManager = document.getElementById('operationsManager')?.value || '';
     
-    // Step 2: Cargo Configuration
+    // Step 2: Cargo Configuration - Enhanced with dynamic data
     formData.dischargeTotalAutos = document.getElementById('dischargeTotalAutos')?.value || '0';
+    formData.dischargeHeavy = document.getElementById('dischargeHeavy')?.value || '0';
     formData.loadingTotalAutos = document.getElementById('loadingTotalAutos')?.value || '0';
+    formData.loadingHeavy = document.getElementById('loadingHeavy')?.value || '0';
     formData.loadbackTotalAutos = document.getElementById('loadbackTotalAutos')?.value || '0';
+    formData.loadbackHeavy = document.getElementById('loadbackHeavy')?.value || '0';
     
-    // Step 3: Team Assignments
+    // Collect dynamic vehicle types for discharge
+    const dischargeVehicleTypes = document.querySelectorAll('#dischargeVehicleTypes .vehicle-type-row');
+    dischargeVehicleTypes.forEach((row, index) => {
+        const counter = index + 1;
+        const vehicleType = row.querySelector('select')?.value;
+        const quantity = row.querySelector('input[type="number"]')?.value;
+        const location = row.querySelector('input[type="text"]')?.value;
+        
+        if (vehicleType) {
+            formData[`dischargeVehicleType${counter}`] = vehicleType;
+            formData[`dischargeQuantity${counter}`] = quantity || '0';
+            formData[`dischargeLocation${counter}`] = location || '';
+        }
+    });
+    
+    // Collect dynamic vehicle types for loading
+    const loadingVehicleTypes = document.querySelectorAll('#loadingVehicleTypes .vehicle-type-row');
+    loadingVehicleTypes.forEach((row, index) => {
+        const counter = index + 1;
+        const vehicleType = row.querySelector('select')?.value;
+        const quantity = row.querySelector('input[type="number"]')?.value;
+        const location = row.querySelector('input[type="text"]')?.value;
+        
+        if (vehicleType) {
+            formData[`loadingVehicleType${counter}`] = vehicleType;
+            formData[`loadingQuantity${counter}`] = quantity || '0';
+            formData[`loadingLocation${counter}`] = location || '';
+        }
+    });
+    
+    // Collect dynamic vehicle types for loadback
+    const loadbackVehicleTypes = document.querySelectorAll('#loadbackVehicleTypes .vehicle-type-row');
+    loadbackVehicleTypes.forEach((row, index) => {
+        const counter = index + 1;
+        const vehicleType = row.querySelector('select')?.value;
+        const quantity = row.querySelector('input[type="number"]')?.value;
+        const location = row.querySelector('input[type="text"]')?.value;
+        
+        if (vehicleType) {
+            formData[`loadbackVehicleType${counter}`] = vehicleType;
+            formData[`loadbackQuantity${counter}`] = quantity || '0';
+            formData[`loadbackLocation${counter}`] = location || '';
+        }
+    });
+    
+    // Step 3: Team Assignments - Enhanced with dynamic team data
     formData.totalDrivers = document.getElementById('totalDrivers')?.value || '0';
     formData.shiftStartTime = document.getElementById('shiftStartTime')?.value || '';
     formData.shiftEndTime = document.getElementById('shiftEndTime')?.value || '';
@@ -1288,17 +1472,67 @@ function gatherAllFormData() {
     formData.numberOfBreaks = document.getElementById('numberOfBreaks')?.value || '0';
     formData.targetCompletion = document.getElementById('targetCompletion')?.value || '';
     
-    // Step 4: TICO Transportation
+    // Collect Auto Operations team members
+    formData.autoOperationsMembers = document.getElementById('autoOperationsMembers')?.value || '0';
+    const autoMembers = parseInt(formData.autoOperationsMembers);
+    for (let i = 1; i <= autoMembers; i++) {
+        const memberSelect = document.getElementById(`autoOperationsMember${i}`);
+        const memberCustom = document.getElementById(`autoOperationsMemberCustom${i}`);
+        
+        if (memberSelect) {
+            formData[`autoOperationsMember${i}`] = memberSelect.value;
+            if (memberSelect.value === 'Custom' && memberCustom) {
+                formData[`autoOperationsMemberCustom${i}`] = memberCustom.value;
+            }
+        }
+    }
+    
+    // Collect High & Heavy team members
+    formData.highHeavyMembers = document.getElementById('highHeavyMembers')?.value || '0';
+    const heavyMembers = parseInt(formData.highHeavyMembers);
+    for (let i = 1; i <= heavyMembers; i++) {
+        const memberSelect = document.getElementById(`highHeavyMember${i}`);
+        const memberCustom = document.getElementById(`highHeavyMemberCustom${i}`);
+        
+        if (memberSelect) {
+            formData[`highHeavyMember${i}`] = memberSelect.value;
+            if (memberSelect.value === 'Custom' && memberCustom) {
+                formData[`highHeavyMemberCustom${i}`] = memberCustom.value;
+            }
+        }
+    }
+    
+    // Step 4: TICO Transportation - Enhanced with vehicle details
     formData.numberOfVans = document.getElementById('numberOfVans')?.value || '0';
     formData.numberOfWagons = document.getElementById('numberOfWagons')?.value || '0';
     formData.numberOfLowDecks = document.getElementById('numberOfLowDecks')?.value || '0';
     
+    // Collect van details
+    const numVans = parseInt(formData.numberOfVans);
+    for (let i = 1; i <= numVans; i++) {
+        const vanId = document.getElementById(`van${i}Id`);
+        const vanDriver = document.getElementById(`van${i}Driver`);
+        
+        if (vanId) formData[`van${i}Id`] = vanId.value;
+        if (vanDriver) formData[`van${i}Driver`] = vanDriver.value;
+    }
+    
+    // Collect wagon details
+    const numWagons = parseInt(formData.numberOfWagons);
+    for (let i = 1; i <= numWagons; i++) {
+        const wagonId = document.getElementById(`wagon${i}Id`);
+        const wagonDriver = document.getElementById(`wagon${i}Driver`);
+        
+        if (wagonId) formData[`wagon${i}Id`] = wagonId.value;
+        if (wagonDriver) formData[`wagon${i}Driver`] = wagonDriver.value;
+    }
+    
     // Include document source if available
-    if (wizardData.documentSource) {
+    if (typeof wizardData !== 'undefined' && wizardData.documentSource) {
         formData.documentSource = wizardData.documentSource;
     }
     
-    console.log('Gathered form data:', formData);
+    console.log('Gathered comprehensive form data:', formData);
     return formData;
 }
 
