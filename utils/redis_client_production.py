@@ -254,15 +254,24 @@ class ProductionRedisClient:
         cleanup_thread.start()
     
     def _calculate_retry_interval(self) -> float:
-        """Calculate exponential backoff retry interval with jitter."""
+        """Calculate exponential backoff retry interval with jitter and special handling for persistent DNS failures."""
         if self.connection_failure_count == 0:
             return self.base_retry_interval
         
-        # Exponential backoff with jitter
-        interval = min(
-            self.base_retry_interval * (2 ** self.connection_failure_count),
-            self.max_retry_interval
-        )
+        # For persistent DNS failures (like invalid hostnames), use longer intervals
+        if self.last_failure_type == 'dns_error' and self.connection_failure_count > 5:
+            # Use extended intervals for DNS failures to reduce unnecessary attempts
+            base_dns_interval = 600  # 10 minutes for persistent DNS issues
+            interval = min(
+                base_dns_interval * (2 ** min(self.connection_failure_count - 5, 3)),
+                3600  # Cap at 1 hour for DNS failures
+            )
+        else:
+            # Normal exponential backoff with jitter
+            interval = min(
+                self.base_retry_interval * (2 ** self.connection_failure_count),
+                self.max_retry_interval
+            )
         
         # Add jitter (±20% randomization)
         import random
@@ -280,11 +289,27 @@ class ProductionRedisClient:
         
         # Enhanced logging based on failure type
         if failure_type == 'dns_error':
-            self._log_throttled(
-                f"🌐 Redis DNS resolution failed (attempt {self.connection_failure_count}): {error_message}",
-                'warning'
-            )
-            if self.failure_count_since_log == 1:  # First failure gets more detail
+            # For DNS errors, be more conservative with logging after persistent failures
+            if self.connection_failure_count <= 3:
+                self._log_throttled(
+                    f"🌐 Redis DNS resolution failed (attempt {self.connection_failure_count}): {error_message}",
+                    'warning'
+                )
+            elif self.connection_failure_count == 4:
+                self._log_throttled(
+                    f"🌐 Redis DNS persistent failure - switching to extended fallback mode",
+                    'warning'
+                )
+                logger.info("🛡️ Application operating with in-memory fallback - this is normal for environments without Redis")
+            else:
+                # After 4 failures, only log every 10th attempt to reduce noise
+                if self.connection_failure_count % 10 == 0:
+                    self._log_throttled(
+                        f"🌐 Redis DNS still failing after {self.connection_failure_count} attempts - continuing with fallback",
+                        'debug'
+                    )
+            
+            if self.failure_count_since_log == 1 and self.connection_failure_count <= 2:  # First couple failures get more detail
                 logger.info("🌐 This may be due to network connectivity or DNS configuration issues")
                 logger.info("🛡️ Application will continue with in-memory fallback until Redis is available")
                 
