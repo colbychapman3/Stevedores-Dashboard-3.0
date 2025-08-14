@@ -328,35 +328,47 @@ function validateStep4() {
         }
     }
     
-    // Validate van details if vans are specified
+    // Validate van details if vans are specified (only if fields exist)
     for (let i = 1; i <= numberOfVans; i++) {
-        const vanId = getValue(`van${i}Id`);
-        const vanDriver = getValue(`van${i}Driver`);
+        const vanIdField = document.getElementById(`van${i}Id`);
+        const vanDriverField = document.getElementById(`van${i}Driver`);
         
-        if (!vanId.trim()) {
-            showValidationError(`van${i}Id`, `Van ${i} ID is required`);
-            return false;
-        }
-        
-        if (!vanDriver.trim()) {
-            showValidationError(`van${i}Driver`, `Van ${i} driver name is required`);
-            return false;
+        // Only validate if the fields exist (dynamic fields)
+        if (vanIdField) {
+            const vanId = vanIdField.value || '';
+            const vanDriver = vanDriverField ? vanDriverField.value || '' : '';
+            
+            if (vanId.trim() && !vanDriver.trim()) {
+                showValidationError(`van${i}Driver`, `Van ${i} driver name is required when van ID is provided`);
+                return false;
+            }
+            
+            if (vanDriver.trim() && !vanId.trim()) {
+                showValidationError(`van${i}Id`, `Van ${i} ID is required when driver is provided`);
+                return false;
+            }
         }
     }
     
-    // Validate wagon details if wagons are specified
+    // Validate wagon details if wagons are specified (only if fields exist)
     for (let i = 1; i <= numberOfWagons; i++) {
-        const wagonId = getValue(`wagon${i}Id`);
-        const wagonDriver = getValue(`wagon${i}Driver`);
+        const wagonIdField = document.getElementById(`wagon${i}Id`);
+        const wagonDriverField = document.getElementById(`wagon${i}Driver`);
         
-        if (!wagonId.trim()) {
-            showValidationError(`wagon${i}Id`, `Wagon ${i} ID is required`);
-            return false;
-        }
-        
-        if (!wagonDriver.trim()) {
-            showValidationError(`wagon${i}Driver`, `Wagon ${i} driver name is required`);
-            return false;
+        // Only validate if the fields exist (dynamic fields)
+        if (wagonIdField) {
+            const wagonId = wagonIdField.value || '';
+            const wagonDriver = wagonDriverField ? wagonDriverField.value || '' : '';
+            
+            if (wagonId.trim() && !wagonDriver.trim()) {
+                showValidationError(`wagon${i}Driver`, `Wagon ${i} driver name is required when wagon ID is provided`);
+                return false;
+            }
+            
+            if (wagonDriver.trim() && !wagonId.trim()) {
+                showValidationError(`wagon${i}Id`, `Wagon ${i} ID is required when driver is provided`);
+                return false;
+            }
         }
     }
     
@@ -752,11 +764,26 @@ function generateReviewSummary() {
 function handleFormSubmission(event) {
     event.preventDefault();
     
+    console.log('Form submission initiated');
+    
+    // Clear any previous validation errors
+    clearValidationErrors();
+    
+    // Perform final validation
+    if (!validateStep4()) {
+        console.log('Step 4 validation failed');
+        return false;
+    }
+    
     // Show submission modal
-    document.getElementById('submissionModal').classList.remove('hidden');
+    const submissionModal = document.getElementById('submissionModal');
+    if (submissionModal) {
+        submissionModal.classList.remove('hidden');
+    }
     
     // Gather all form data
     const formData = gatherAllFormData();
+    console.log('Form data gathered:', formData);
     
     // Try online submission first, fallback to sync manager
     if (navigator.onLine) {
