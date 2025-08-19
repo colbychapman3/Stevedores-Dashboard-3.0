@@ -45,3 +45,30 @@ temp/
 node_modules/
 dist/
 build/
+
+# Backup directories
+stevedores-backup-*/
+
+# Archive directories
+stevedores-archive/
+
+# Development and testing files
+test_production_*.py
+test_redis_*.py
+validate_production_*.py
+deployment_validation_*.json
+*_wizard_navigation.html
+
+# Claude Flow metrics (auto-generated)
+.claude-flow/metrics/
+
+# Temporary runtime files
+*.tmp.*
+render_config.py.tmp.*
+
+# Large database files (development)
+*.db.bak
+*.sqlite.bak
+
+# Documentation temp files
+*.md.tmp
