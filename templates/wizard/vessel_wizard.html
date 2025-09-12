@@ -690,59 +690,6 @@
                     <div id="uploadStatusStep4" class="hidden mt-3 p-2 rounded text-sm"></div>
                 </div>
 
-                <!-- General Operations Section -->
-                <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-clock text-blue-600 mr-2"></i>General Operations
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                            <label for="totalDrivers" class="block text-sm font-medium text-gray-700 mb-2">Total Drivers</label>
-                            <input type="number" id="totalDrivers" name="totalDrivers" min="0"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Enter total drivers">
-                        </div>
-                        
-                        <div>
-                            <label for="shiftStartTime" class="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
-                            <input type="time" id="shiftStartTime" name="shiftStartTime"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="shiftEndTime" class="block text-sm font-medium text-gray-700 mb-2">Shift End Time</label>
-                            <input type="time" id="shiftEndTime" name="shiftEndTime"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="shipStartTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Start Time</label>
-                            <input type="time" id="shipStartTime" name="shipStartTime"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="shipCompleteTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Complete Time</label>
-                            <input type="time" id="shipCompleteTime" name="shipCompleteTime"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="numberOfBreaks" class="block text-sm font-medium text-gray-700 mb-2">Number of Breaks</label>
-                            <input type="number" id="numberOfBreaks" name="numberOfBreaks" min="0"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                   placeholder="1 break = 60 minutes">
-                        </div>
-                        
-                        <div class="md:col-span-2">
-                            <label for="targetCompletion" class="block text-sm font-medium text-gray-700 mb-2">Target Completion</label>
-                            <input type="datetime-local" id="targetCompletion" name="targetCompletion"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                </div>
-
                 <!-- TICO Transportation Section -->
                 <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -790,6 +737,65 @@
                         <h4 class="text-md font-semibold text-gray-800 mb-3">Wagon Details</h4>
                         <div id="wagonDetailsList" class="space-y-3">
                             <!-- Dynamic wagon detail fields will be added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- General Operations Section -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                        <i class="fas fa-clock text-blue-600 mr-2"></i>General Operations
+                    </h3>
+                    <div class="bg-blue-100 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p class="text-blue-800 text-sm">
+                            <i class="fas fa-info-circle mr-2"></i>Configure operational parameters based on your TICO transportation needs above.
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label for="totalDrivers" class="block text-sm font-medium text-gray-700 mb-2">Total Drivers</label>
+                            <input type="number" id="totalDrivers" name="totalDrivers" min="0"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Enter total drivers">
+                            <p class="text-xs text-gray-500 mt-1">Consider: Vans hold 7, Wagons hold 5 drivers each</p>
+                        </div>
+                        
+                        <div>
+                            <label for="shiftStartTime" class="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
+                            <input type="time" id="shiftStartTime" name="shiftStartTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shiftEndTime" class="block text-sm font-medium text-gray-700 mb-2">Shift End Time</label>
+                            <input type="time" id="shiftEndTime" name="shiftEndTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shipStartTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Start Time</label>
+                            <input type="time" id="shipStartTime" name="shipStartTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="shipCompleteTime" class="block text-sm font-medium text-gray-700 mb-2">Ship Complete Time</label>
+                            <input type="time" id="shipCompleteTime" name="shipCompleteTime"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="numberOfBreaks" class="block text-sm font-medium text-gray-700 mb-2">Number of Breaks</label>
+                            <input type="number" id="numberOfBreaks" name="numberOfBreaks" min="0"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                   placeholder="1 break = 60 minutes">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label for="targetCompletion" class="block text-sm font-medium text-gray-700 mb-2">Target Completion</label>
+                            <input type="datetime-local" id="targetCompletion" name="targetCompletion"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
                 </div>
