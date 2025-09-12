@@ -118,8 +118,11 @@
             padding: 1rem;
         }
         .step-indicator {
-            font-size: 0.875rem;
-            padding: 0.5rem;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.5rem;
+        }
+        .step-indicator i {
+            display: none; /* Hide icons on mobile for space */
         }
         .auto-fill-content {
             flex-direction: column;
@@ -127,6 +130,13 @@
         }
         .auto-fill-actions {
             justify-content: center;
+        }
+        /* Stack step indicators vertically on very small screens */
+        @media (max-width: 480px) {
+            .step-indicator {
+                padding: 0.25rem 0.375rem;
+                font-size: 0.625rem;
+            }
         }
     }
 </style>
@@ -145,18 +155,21 @@
 
         <!-- Step Indicators -->
         <div class="flex justify-center mb-8">
-            <div class="flex space-x-4 bg-white/10 rounded-full p-2">
-                <div id="step1-indicator" class="step-indicator step-active px-4 py-2 rounded-full text-white font-semibold">
-                    <i class="fas fa-ship mr-2"></i>1. Vessel Info
+            <div class="flex space-x-2 bg-white/10 rounded-full p-2">
+                <div id="step1-indicator" class="step-indicator step-active px-3 py-2 rounded-full text-white font-semibold text-sm">
+                    <i class="fas fa-ship mr-1"></i>1. Vessel
                 </div>
-                <div id="step2-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
-                    <i class="fas fa-users mr-2"></i>2. Team Assignment
+                <div id="step2-indicator" class="step-indicator px-3 py-2 rounded-full text-white/60 font-semibold text-sm">
+                    <i class="fas fa-users mr-1"></i>2. Team
                 </div>
-                <div id="step3-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
-                    <i class="fas fa-boxes mr-2"></i>3. Cargo Config
+                <div id="step3-indicator" class="step-indicator px-3 py-2 rounded-full text-white/60 font-semibold text-sm">
+                    <i class="fas fa-boxes mr-1"></i>3. Cargo
                 </div>
-                <div id="step4-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
-                    <i class="fas fa-check mr-2"></i>4. Review
+                <div id="step4-indicator" class="step-indicator px-3 py-2 rounded-full text-white/60 font-semibold text-sm">
+                    <i class="fas fa-truck mr-1"></i>4. TICO
+                </div>
+                <div id="step5-indicator" class="step-indicator px-3 py-2 rounded-full text-white/60 font-semibold text-sm">
+                    <i class="fas fa-check mr-1"></i>5. Review
                 </div>
             </div>
         </div>
@@ -164,7 +177,8 @@
         <!-- Document Upload Section -->
 
         <!-- Wizard Form -->
-        <form id="vesselWizardForm" action="/wizard/" method="POST" onsubmit="handleFormSubmission(event)" class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
+        <div class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
+        <form id="vesselWizardForm" action="/wizard/" method="POST" class="w-full">
             <!-- Step 1: Vessel Information -->
             <div id="step1" class="wizard-step">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
@@ -314,7 +328,7 @@
                 </div>
                 
                 <div class="flex justify-end mt-8">
-                    <button type="button" onclick="nextStep(1)" 
+                    <button type="button" onclick="nextStep(1)" id="step1-next-btn"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
                         Next Step <i class="fas fa-arrow-right ml-2"></i>
                     </button>
@@ -435,7 +449,7 @@
                             class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-arrow-left mr-2"></i> Previous
                     </button>
-                    <button type="button" onclick="nextStep(2)" 
+                    <button type="button" onclick="nextStep(2)" id="step2-next-btn"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
                         Next Step <i class="fas fa-arrow-right ml-2"></i>
                     </button>
@@ -612,17 +626,17 @@
                             class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-arrow-left mr-2"></i> Previous
                     </button>
-                    <button type="button" onclick="nextStep(3)" 
+                    <button type="button" onclick="nextStep(3)" id="step3-next-btn"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
                         Review <i class="fas fa-arrow-right ml-2"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Step 4: Operational Parameters -->
+            <!-- Step 4: TICO Transportation & Operations -->
             <div id="step4" class="wizard-step hidden">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                    <i class="fas fa-cog text-blue-600 mr-3"></i>Step 4: Operational Parameters
+                    <i class="fas fa-truck text-blue-600 mr-3"></i>Step 4: TICO Transportation & Operations
                 </h2>
                 
                 <!-- Step 4 Validation Errors -->
@@ -729,17 +743,6 @@
                     </div>
                 </div>
 
-                <!-- Review Summary Section -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
-                        <i class="fas fa-clipboard-check text-blue-600 mr-2"></i>Review Your Configuration
-                    </h3>
-                    <div id="reviewSummary" class="bg-white rounded-lg p-4">
-                        <!-- Review summary will be populated by JavaScript -->
-                        <p class="text-gray-500 text-center">Complete the operational parameters below to generate review summary</p>
-                    </div>
-                </div>
-
                 <!-- TICO Transportation Section -->
                 <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -796,14 +799,54 @@
                             class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-arrow-left mr-2"></i> Previous
                     </button>
-                    <button type="submit" 
-                            onclick="handleFormSubmission(event)"
+                    <button type="button" onclick="nextStep(4)" id="step4-next-btn"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition duration-200">
+                        Review <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Review & Submit -->
+            <div id="step5" class="wizard-step hidden">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">
+                    <i class="fas fa-clipboard-check text-blue-600 mr-3"></i>Step 5: Review & Submit
+                </h2>
+                
+                <!-- Step 5 Validation Errors -->
+                <div id="step5-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step5-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
+
+                <!-- Review Summary Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-clipboard-check text-blue-600 mr-2"></i>Review Your Configuration
+                    </h3>
+                    <div id="reviewSummary" class="bg-white rounded-lg p-4">
+                        <!-- Review summary will be populated by JavaScript -->
+                        <p class="text-gray-500 text-center">Review summary will be generated automatically</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button type="button" onclick="prevStep(5)" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition duration-200">
+                        <i class="fas fa-arrow-left mr-2"></i> Previous
+                    </button>
+                    <button type="submit" id="wizard-submit-btn"
                             class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-rocket mr-2"></i> Create Vessel Operation
                     </button>
                 </div>
             </div>
         </form>
+        </div>
     </div>
 </div>
 

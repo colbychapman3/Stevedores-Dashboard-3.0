@@ -24,7 +24,11 @@ def get_db_and_models():
 def vessel_wizard():
     """Enhanced 4-step vessel creation wizard"""
     if request.method == 'GET':
-        return render_template('wizard/vessel_wizard.html')
+        try:
+            return render_template('wizard/vessel_wizard.html')
+        except Exception as e:
+            flash(f'Error loading wizard: {str(e)}', 'error')
+            return redirect(url_for('dashboard'))
     
     # Handle POST - process completed wizard
     try:
@@ -35,13 +39,23 @@ def vessel_wizard():
         else:
             data = request.form.to_dict()
         
+        # Validate required fields
+        required_fields = ['vesselName', 'shippingLine', 'vesselType', 'operationType', 'berthAssignment', 'operationsManager']
+        for field in required_fields:
+            if not data.get(field, '').strip():
+                error_msg = f'Missing required field: {field}'
+                if request.is_json:
+                    return jsonify({'error': error_msg}), 400
+                flash(error_msg, 'error')
+                return render_template('wizard/vessel_wizard.html')
+        
         # Create vessel from wizard data
         vessel = Vessel(
             # Step 1: Vessel Information
             name=data.get('vesselName', '').strip(),
             shipping_line=data.get('shippingLine', ''),
             vessel_type=data.get('vesselType', ''),
-            port_of_call=data.get('port', 'Colonel Island'),
+            port_of_call=data.get('port', "Colonel's Island"),
             operation_start_date=datetime.fromisoformat(data.get('operationStartDate')).date() if data.get('operationStartDate') else None,
             operation_end_date=datetime.fromisoformat(data.get('operationEndDate')).date() if data.get('operationEndDate') else None,
             stevedoring_company=data.get('stevedoringCompany', 'APS Stevedoring'),

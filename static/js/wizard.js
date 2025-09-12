@@ -82,11 +82,16 @@ function initializeWizard() {
     }
     
     // Initialize team members with default values
-    updateTeamMembers('autoOperations');  // Initialize with 1 member (default selected)
-    updateTeamMembers('highHeavy');       // Initialize high/heavy team
-    
-    // Initialize vessel type options for default K-line selection
-    updateVesselTypeOptions();
+    setTimeout(() => {
+        updateTeamMembers('autoOperations');  // Initialize with 1 member (default selected)
+        updateTeamMembers('highHeavy');       // Initialize high/heavy team
+        
+        // Initialize vessel type options for default K-line selection
+        updateVesselTypeOptions();
+        
+        // Apply step 2 visibility after initialization
+        updateStep2Visibility();
+    }, 100);
     
     console.log('Vessel wizard initialized with offline document processing support');
 }
@@ -105,9 +110,8 @@ function nextStep(step) {
             updateStep2Visibility();
         } else if (step + 1 === 3) {
             updateStep3Configuration();
-        }
-        
-        if (step === 3) {
+        } else if (step + 1 === 5) {
+            // Generate review summary when entering step 5
             generateReviewSummary();
         }
     }
@@ -131,10 +135,15 @@ function showStep(step) {
 
 function updateStepIndicators(fromStep, toStep) {
     // Reset all indicators first
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
         const indicator = document.getElementById(`step${i}-indicator`);
-        indicator.classList.remove('step-active', 'step-completed');
-        indicator.querySelector('i').className = indicator.querySelector('i').className.replace(/fa-check.*?(?=\s|$)/, 'fa-check');
+        if (indicator) {
+            indicator.classList.remove('step-active', 'step-completed');
+            const icon = indicator.querySelector('i');
+            if (icon) {
+                icon.className = icon.className.replace(/fa-check.*?(?=\s|$)/, 'fa-check');
+            }
+        }
     }
     
     // Mark completed steps
@@ -151,17 +160,19 @@ function updateStepIndicators(fromStep, toStep) {
     toIndicator.classList.add('step-active');
     
     // Update step text opacity for better visual feedback
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
         const indicator = document.getElementById(`step${i}-indicator`);
-        if (i < toStep) {
-            indicator.classList.remove('text-white/60');
-            indicator.classList.add('text-white');
-        } else if (i === toStep) {
-            indicator.classList.remove('text-white/60');
-            indicator.classList.add('text-white');
-        } else {
-            indicator.classList.remove('text-white');
-            indicator.classList.add('text-white/60');
+        if (indicator) {
+            if (i < toStep) {
+                indicator.classList.remove('text-white/60');
+                indicator.classList.add('text-white');
+            } else if (i === toStep) {
+                indicator.classList.remove('text-white/60');
+                indicator.classList.add('text-white');
+            } else {
+                indicator.classList.remove('text-white');
+                indicator.classList.add('text-white/60');
+            }
         }
     }
 }
@@ -178,6 +189,8 @@ function validateStep(step) {
         return validateStep3();
     } else if (step === 4) {
         return validateStep4();
+    } else if (step === 5) {
+        return validateStep5();
     }
     
     return true;
@@ -274,43 +287,61 @@ function validateStep2() {
     
     // Validate that at least one team member is assigned for auto operations
     if (autoMembers === 0) {
-        showValidationError('autoOperationsMembers', 'Please select at least 1 team member for auto operations');
+        showValidationError('autoOperationsMembers', 'Please select at least 1 team member for auto operations', 2);
         console.log('Step 2 validation failed: No auto operations members selected');
         return false;
     }
     
     // Validate team member selections
     for (let i = 1; i <= autoMembers; i++) {
-        const memberValue = getValue(`autoOperationsMember${i}`);
-        const customValue = getValue(`autoOperationsMemberCustom${i}`);
+        const memberElement = document.getElementById(`autoOperationsMember${i}`);
+        const customElement = document.getElementById(`autoOperationsMemberCustom${i}`);
+        
+        if (!memberElement) {
+            console.log(`Step 2 validation: Member ${i} element not found, skipping`);
+            continue; // Skip if element doesn't exist yet
+        }
+        
+        const memberValue = memberElement.value;
+        const customValue = customElement ? customElement.value : '';
         
         console.log(`Validating auto member ${i}: value="${memberValue}", custom="${customValue}"`);
         
         if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
             if (!memberValue) {
-                showValidationError(`autoOperationsMember${i}`, `Please select a team member name for Member ${i}`);
+                showValidationError(`autoOperationsMember${i}`, `Please select a team member name for Member ${i}`, 2);
             } else {
-                showValidationError(`autoOperationsMemberCustom${i}`, `Please enter a custom name for Member ${i}`);
+                showValidationError(`autoOperationsMemberCustom${i}`, `Please enter a custom name for Member ${i}`, 2);
             }
             console.log(`Step 2 validation failed: Auto member ${i} - value: "${memberValue}", custom: "${customValue}"`);
             return false;
         }
     }
     
-    // Validate high heavy team if K-line
+    // Validate high heavy team if K-line and members > 0
     const shippingLine = getValue('shippingLine');
     if (shippingLine === 'K-line' && highHeavyMembers > 0) {
         for (let i = 1; i <= highHeavyMembers; i++) {
-            const memberValue = getValue(`highHeavyMember${i}`);
-            const customValue = getValue(`highHeavyMemberCustom${i}`);
+            const memberElement = document.getElementById(`highHeavyMember${i}`);
+            const customElement = document.getElementById(`highHeavyMemberCustom${i}`);
+            
+            if (!memberElement) {
+                console.log(`Step 2 validation: High heavy member ${i} element not found, skipping`);
+                continue;
+            }
+            
+            const memberValue = memberElement.value;
+            const customValue = customElement ? customElement.value : '';
             
             if (!memberValue || (memberValue === 'Custom' && !customValue.trim())) {
-                showValidationError(`highHeavyMember${i}`, `High heavy team member ${i} is required`);
+                showValidationError(`highHeavyMember${i}`, `High heavy team member ${i} is required`, 2);
+                console.log(`Step 2 validation failed: High heavy member ${i} validation failed`);
                 return false;
             }
         }
     }
     
+    console.log('Step 2 validation passed successfully');
     return true;
 }
 
@@ -346,21 +377,23 @@ function validateStep3() {
 }
 
 function validateStep4() {
-    // Step 4 validation - operational parameters
+    // Step 4 validation - TICO transportation and operational parameters
     const totalDrivers = getValue('totalDrivers');
     const shiftStartTime = getValue('shiftStartTime');
     const shiftEndTime = getValue('shiftEndTime');
     const numberOfVans = parseInt(getValue('numberOfVans')) || 0;
     const numberOfWagons = parseInt(getValue('numberOfWagons')) || 0;
     
+    console.log('Step 4 validation - TICO and operations');
+    
     if (!totalDrivers || parseInt(totalDrivers) <= 0) {
-        showValidationError('totalDrivers', 'Total drivers is required');
+        showValidationError('totalDrivers', 'Total drivers is required', 4);
         return false;
     }
     
     if (shiftStartTime && shiftEndTime) {
         if (shiftStartTime >= shiftEndTime) {
-            showValidationError('shiftEndTime', 'Shift end time must be after start time');
+            showValidationError('shiftEndTime', 'Shift end time must be after start time', 4);
             return false;
         }
     }
@@ -376,12 +409,12 @@ function validateStep4() {
             const vanDriver = vanDriverField ? vanDriverField.value || '' : '';
             
             if (vanId.trim() && !vanDriver.trim()) {
-                showValidationError(`van${i}Driver`, `Van ${i} driver name is required when van ID is provided`);
+                showValidationError(`van${i}Driver`, `Van ${i} driver name is required when van ID is provided`, 4);
                 return false;
             }
             
             if (vanDriver.trim() && !vanId.trim()) {
-                showValidationError(`van${i}Id`, `Van ${i} ID is required when driver is provided`);
+                showValidationError(`van${i}Id`, `Van ${i} ID is required when driver is provided`, 4);
                 return false;
             }
         }
@@ -398,17 +431,28 @@ function validateStep4() {
             const wagonDriver = wagonDriverField ? wagonDriverField.value || '' : '';
             
             if (wagonId.trim() && !wagonDriver.trim()) {
-                showValidationError(`wagon${i}Driver`, `Wagon ${i} driver name is required when wagon ID is provided`);
+                showValidationError(`wagon${i}Driver`, `Wagon ${i} driver name is required when wagon ID is provided`, 4);
                 return false;
             }
             
             if (wagonDriver.trim() && !wagonId.trim()) {
-                showValidationError(`wagon${i}Id`, `Wagon ${i} ID is required when driver is provided`);
+                showValidationError(`wagon${i}Id`, `Wagon ${i} ID is required when driver is provided`, 4);
                 return false;
             }
         }
     }
     
+    console.log('Step 4 validation passed successfully');
+    return true;
+}
+
+function validateStep5() {
+    // Step 5 validation - review and final submission
+    console.log('Step 5 validation - final review');
+    
+    // No additional validation needed for review step
+    // All previous validations should have passed
+    console.log('Step 5 validation passed successfully');
     return true;
 }
 
@@ -430,8 +474,9 @@ function showValidationError(fieldId, message, stepNumber = null) {
     
     // Add error to step-specific error area if step number is provided
     if (stepNumber && currentStep) {
-        const stepErrorsContainer = document.getElementById(`step${currentStep}-errors`);
-        const stepErrorsList = document.getElementById(`step${currentStep}-error-list`);
+        const actualStep = stepNumber || currentStep;
+        const stepErrorsContainer = document.getElementById(`step${actualStep}-errors`);
+        const stepErrorsList = document.getElementById(`step${actualStep}-error-list`);
         
         if (stepErrorsContainer && stepErrorsList) {
             stepErrorsContainer.classList.remove('hidden');
@@ -467,7 +512,7 @@ function clearValidationErrors() {
     });
     
     // Clear step-specific error areas
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
         const stepErrorsContainer = document.getElementById(`step${i}-errors`);
         const stepErrorsList = document.getElementById(`step${i}-error-list`);
         
@@ -807,8 +852,8 @@ function handleFormSubmission(event) {
     clearValidationErrors();
     
     // Perform final validation
-    if (!validateStep4()) {
-        console.log('Step 4 validation failed');
+    if (!validateStep5()) {
+        console.log('Step 5 validation failed');
         return false;
     }
     
@@ -1225,16 +1270,28 @@ function updateVesselTypeOptions() {
 
 // Update Step 2 team assignment visibility
 function updateStep2Visibility() {
-    const shippingLine = document.getElementById('shippingLine').value;
+    const shippingLineElement = document.getElementById('shippingLine');
     const highHeavySection = document.getElementById('highHeavySection');
+    
+    if (!shippingLineElement || !highHeavySection) {
+        console.warn('Step 2 visibility elements not found');
+        return;
+    }
+    
+    const shippingLine = shippingLineElement.value;
     
     if (shippingLine === 'K-line') {
         highHeavySection.style.display = 'block';
+        console.log('High Heavy section shown for K-line');
     } else {
         highHeavySection.style.display = 'none';
         // Reset high heavy team members when hidden
-        document.getElementById('highHeavyMembers').value = '0';
-        updateTeamMembers('highHeavy');
+        const highHeavyMembersElement = document.getElementById('highHeavyMembers');
+        if (highHeavyMembersElement) {
+            highHeavyMembersElement.value = '0';
+            updateTeamMembers('highHeavy');
+        }
+        console.log('High Heavy section hidden for non-K-line');
     }
 }
 
@@ -1285,8 +1342,15 @@ function updateStep3HeavyEquipment() {
 
 // Step 2: Team Assignment Functions
 function updateTeamMembers(teamType) {
-    const memberCount = parseInt(document.getElementById(`${teamType}Members`).value) || 0;
+    const memberCountElement = document.getElementById(`${teamType}Members`);
     const container = document.getElementById(`${teamType}TeamMembers`);
+    
+    if (!memberCountElement || !container) {
+        console.warn(`Team member elements not found for ${teamType}`);
+        return;
+    }
+    
+    const memberCount = parseInt(memberCountElement.value) || 0;
     
     // Clear existing members
     container.innerHTML = '';
@@ -1295,15 +1359,30 @@ function updateTeamMembers(teamType) {
     for (let i = 1; i <= memberCount; i++) {
         const memberDiv = document.createElement('div');
         memberDiv.className = 'flex flex-col';
+        
+        // Pre-select Colby for first member, then other defaults
+        let defaultValue = '';
+        let defaultSelected = '';
+        if (i === 1) {
+            defaultValue = 'Colby';
+            defaultSelected = 'selected';
+        } else if (i === 2) {
+            defaultValue = 'Spencer';
+        } else if (i === 3) {
+            defaultValue = 'Cole';
+        } else if (i === 4) {
+            defaultValue = 'Bruce';
+        }
+        
         memberDiv.innerHTML = `
             <label for="${teamType}Member${i}" class="block text-sm font-medium text-gray-700 mb-2">Member ${i}</label>
             <select id="${teamType}Member${i}" name="${teamType}Member${i}" onchange="handleMemberSelection('${teamType}', ${i})"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                 <option value="">Select Member</option>
-                <option value="Colby" selected>Colby</option>
-                <option value="Spencer">Spencer</option>
-                <option value="Cole">Cole</option>
-                <option value="Bruce">Bruce</option>
+                <option value="Colby" ${i === 1 ? 'selected' : ''}>Colby</option>
+                <option value="Spencer" ${i === 2 ? 'selected' : ''}>Spencer</option>
+                <option value="Cole" ${i === 3 ? 'selected' : ''}>Cole</option>
+                <option value="Bruce" ${i === 4 ? 'selected' : ''}>Bruce</option>
                 <option value="Custom">Custom</option>
             </select>
             <input type="text" id="${teamType}MemberCustom${i}" name="${teamType}MemberCustom${i}" 
@@ -1311,6 +1390,14 @@ function updateTeamMembers(teamType) {
                    placeholder="Enter custom name">
         `;
         container.appendChild(memberDiv);
+        
+        // Set default value if specified
+        if (defaultValue) {
+            const selectElement = document.getElementById(`${teamType}Member${i}`);
+            if (selectElement) {
+                selectElement.value = defaultValue;
+            }
+        }
     }
 }
 
