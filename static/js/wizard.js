@@ -54,7 +54,7 @@ function nextStep(step) {
         updateStepIndicators(step, step + 1);
         currentStep = step + 1;
         
-        if (step === 3) {
+        if (step === 4) {
             generateReviewSummary();
         }
     }
@@ -104,6 +104,8 @@ function validateStep(step) {
         return validateStep3();
     } else if (step === 4) {
         return validateStep4();
+    } else if (step === 5) {
+        return validateStep5();
     }
     
     return true;
@@ -294,6 +296,31 @@ function validateStep4() {
     }
     
     return true;
+}
+
+function validateStep5() {
+    // Step 5 validation - review/summary 
+    // No additional validation needed as all previous steps are already validated
+    // This step is just for review and confirmation
+    return true;
+}
+
+function validateAllSteps() {
+    // Validate all steps before final submission
+    clearValidationErrors();
+    
+    let allValid = true;
+    const stepNames = ['Step 1 (Vessel Info)', 'Step 2 (Team Assignment)', 'Step 3 (Cargo Config)', 'Step 4 (Operations)'];
+    
+    for (let step = 1; step <= 4; step++) {
+        const stepValid = validateStep(step);
+        if (!stepValid) {
+            console.log(`Validation failed on ${stepNames[step-1]}`);
+            allValid = false;
+        }
+    }
+    
+    return allValid;
 }
 
 function showValidationError(fieldId, message) {
@@ -557,6 +584,13 @@ function generateReviewSummary() {
 function handleFormSubmission(event) {
     event.preventDefault();
     
+    // Validate all steps before submission
+    const allStepsValid = validateAllSteps();
+    if (!allStepsValid) {
+        showAlert('Please complete all required fields before submitting.', 'error');
+        return;
+    }
+    
     // Show submission modal
     document.getElementById('submissionModal').classList.remove('hidden');
     
@@ -684,11 +718,54 @@ function formatDate(dateString) {
 }
 
 function showAlert(message, type = 'info') {
-    // Simple alert system (could be enhanced with proper toast notifications)
-    const alertClass = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+    // Enhanced alert system with visible notifications
     console.log(`[${type.toUpperCase()}] ${message}`);
     
-    // Could implement proper toast notifications here
+    // Create alert element
+    const alertId = 'wizard-alert-' + Date.now();
+    const alertDiv = document.createElement('div');
+    alertDiv.id = alertId;
+    alertDiv.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md ${getAlertClasses(type)}`;
+    alertDiv.innerHTML = `
+        <div class="flex items-center">
+            <div class="flex-shrink-0">
+                ${getAlertIcon(type)}
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium">${message}</p>
+            </div>
+            <div class="ml-auto pl-3">
+                <button onclick="document.getElementById('${alertId}').remove()" class="text-sm hover:opacity-70">×</button>
+            </div>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(alertDiv);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        const element = document.getElementById(alertId);
+        if (element) element.remove();
+    }, 5000);
+}
+
+function getAlertClasses(type) {
+    switch(type) {
+        case 'error': return 'bg-red-100 border border-red-300 text-red-800';
+        case 'success': return 'bg-green-100 border border-green-300 text-green-800';
+        case 'warning': return 'bg-yellow-100 border border-yellow-300 text-yellow-800';
+        default: return 'bg-blue-100 border border-blue-300 text-blue-800';
+    }
+}
+
+function getAlertIcon(type) {
+    switch(type) {
+        case 'error': return '<i class="fas fa-exclamation-circle text-red-500"></i>';
+        case 'success': return '<i class="fas fa-check-circle text-green-500"></i>';
+        case 'warning': return '<i class="fas fa-exclamation-triangle text-yellow-500"></i>';
+        default: return '<i class="fas fa-info-circle text-blue-500"></i>';
+    }
 }
 
 // Sync offline submissions when connection returns
@@ -1243,7 +1320,7 @@ function nextStep(step) {
             updateStep3Configuration();
         }
         
-        if (step === 3) {
+        if (step === 4) {
             generateReviewSummary();
         }
     }
