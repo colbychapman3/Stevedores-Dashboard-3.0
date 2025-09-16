@@ -9,7 +9,7 @@ import os
 import sys
 import logging
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for, make_response, flash
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, make_response, flash, has_app_context
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
@@ -32,59 +32,125 @@ except ImportError:
 app = Flask(__name__)
 
 # FORCE CACHE REFRESH: Production build version identifier
-DEPLOYMENT_VERSION = "3.0.6-SCHEMA-FIX-20250805"
+DEPLOYMENT_VERSION = "3.0.7-DB-DIAGNOSTICS-20250806"
 print(f"🚢 STEVEDORES DASHBOARD {DEPLOYMENT_VERSION} STARTING...")
 
-# Early logging setup for configuration debugging
-logging.basicConfig(level=logging.INFO)
+# Early logging setup for configuration debugging with enhanced formatting
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [APP] %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 config_logger = logging.getLogger(__name__)
+config_logger.info("🏗️  App.py initialization starting...")
+config_logger.info(f"🐍 Python version: {sys.version}")
+config_logger.info(f"🌍 Working directory: {os.getcwd()}")
 
 # Configuration - Standardized precedence: env -> render_config -> production_config -> fallback
 config_name = os.environ.get('FLASK_CONFIG', 'render')
 config_loaded = False
 
+config_logger.info(f"🔧 Target configuration: {config_name}")
+config_logger.info(f"🔐 SECRET_KEY environment: {'SET' if os.environ.get('SECRET_KEY') else 'NOT SET'}")
+config_logger.info(f"🗄️  DATABASE_URL environment: {'SET' if os.environ.get('DATABASE_URL') else 'NOT SET'}")
+
 # Try render_config first (preferred for Render deployment)
 if not config_loaded:
     try:
+        config_logger.info("📋 Attempting to load render_config...")
         from render_config import config
-        app.config.from_object(config[config_name])
-        config[config_name].init_app(app)
-        config_loaded = True
-        config_logger.info(f"✅ Loaded render_config: {config_name}")
-    except ImportError:
-        config_logger.info("⚠️  render_config not available, trying production_config")
+        config_logger.info(f"📋 render_config imported, available configs: {list(config.keys())}")
+        
+        if config_name in config:
+            config_logger.info(f"🔧 Loading config class: {config_name}")
+            app.config.from_object(config[config_name])
+            config[config_name].init_app(app)
+            config_loaded = True
+            config_logger.info(f"✅ Loaded render_config: {config_name}")
+        else:
+            config_logger.warning(f"⚠️  Config '{config_name}' not found, trying 'render' fallback")
+            app.config.from_object(config['render'])
+            config['render'].init_app(app)
+            config_loaded = True
+            config_logger.info(f"✅ Loaded render_config: render (fallback)")
+    except ImportError as e:
+        config_logger.info(f"⚠️  render_config not available: {e}")
+    except Exception as e:
+        config_logger.error(f"❌ Error loading render_config: {e}")
 
 # Fallback to production_config
 if not config_loaded:
     try:
+        config_logger.info("📋 Attempting to load production_config...")
         from production_config import config
         fallback_name = 'production' if config_name in ['render', 'production'] else config_name
+        config_logger.info(f"📋 production_config imported, available configs: {list(config.keys())}")
+        config_logger.info(f"🔧 Using fallback config name: {fallback_name}")
+        
         if fallback_name in config:
+            config_logger.info(f"🔧 Loading config class: {fallback_name}")
             app.config.from_object(config[fallback_name])
             config[fallback_name].init_app(app)
             config_loaded = True
             config_logger.info(f"✅ Loaded production_config: {fallback_name}")
         else:
-            config_logger.warning(f"⚠️  Config '{fallback_name}' not found in production_config")
-    except ImportError:
-        config_logger.info("⚠️  production_config not available, using basic fallback")
+            config_logger.error(f"❌ Config '{fallback_name}' not found in production_config")
+            config_logger.info(f"💡 Available configs: {list(config.keys())}")
+    except ImportError as e:
+        config_logger.info(f"⚠️  production_config not available: {e}")
     except Exception as e:
         config_logger.error(f"❌ Error loading production_config: {e}")
 
 # Final fallback to basic configuration
 if not config_loaded:
+    config_logger.warning("⚠️  No configuration file loaded, using environment-based fallback")
+    
     # SECURITY FIX: Remove hardcoded SECRET_KEY fallback - require environment variable
     secret_key = os.environ.get('SECRET_KEY')
     if not secret_key:
+        config_logger.error("❌ CRITICAL: SECRET_KEY environment variable is required")
         raise ValueError("SECRET_KEY environment variable is required for security. Set SECRET_KEY in your environment.")
+    
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///stevedores.db')
+    debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'
+    
+    config_logger.info(f"🔐 Using SECRET_KEY from environment (length: {len(secret_key)})")
+    config_logger.info(f"🗄️  Using DATABASE_URL: {database_url.split('://')[0]}://***" if '://' in database_url else database_url)
+    config_logger.info(f"🐛 Debug mode: {debug_mode}")
     
     app.config.update({
         'SECRET_KEY': secret_key,
-        'SQLALCHEMY_DATABASE_URI': os.environ.get('DATABASE_URL', 'sqlite:///stevedores.db'),
+        'SQLALCHEMY_DATABASE_URI': database_url,
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-        'DEBUG': os.environ.get('FLASK_ENV', 'production') == 'development'
+        'DEBUG': debug_mode
     })
+    config_loaded = True
     config_logger.info("✅ Loaded basic fallback configuration with secure SECRET_KEY")
+
+# Validate final configuration
+if config_loaded:
+    config_logger.info("🔍 Validating final configuration...")
+    
+    # Validate SECRET_KEY
+    final_secret = app.config.get('SECRET_KEY')
+    if not final_secret:
+        config_logger.error("❌ CRITICAL: No SECRET_KEY in final configuration")
+        raise ValueError("SECRET_KEY is missing from final configuration")
+    else:
+        config_logger.info(f"✅ SECRET_KEY validated (length: {len(final_secret)})")
+    
+    # Validate DATABASE_URI
+    final_db_uri = app.config.get('SQLALCHEMY_DATABASE_URI')
+    if not final_db_uri:
+        config_logger.error("❌ CRITICAL: No DATABASE_URI in final configuration")
+        raise ValueError("SQLALCHEMY_DATABASE_URI is missing from final configuration")
+    else:
+        config_logger.info(f"✅ DATABASE_URI validated: {final_db_uri.split('://')[0]}://***" if '://' in final_db_uri else "✅ DATABASE_URI validated")
+    
+    config_logger.info("✅ Configuration validation completed successfully")
+else:
+    config_logger.error("❌ CRITICAL: No configuration was loaded")
+    raise RuntimeError("Failed to load any configuration - deployment cannot continue")
 
 # Database configuration - handled by render_config.py for production
 
@@ -112,18 +178,50 @@ db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 
-# Initialize Security Manager for maritime operations
-from utils.security_manager import init_security_manager
-security_manager = init_security_manager(app)
+# Initialize Security Manager for maritime operations with enhanced error handling
+config_logger.info("🔒 Initializing security systems...")
 
-# Initialize Phase 2: API Security Layer
-from utils.jwt_auth import init_jwt_auth
-from utils.audit_logger import init_audit_logger
-from utils.api_middleware import init_api_middleware
+try:
+    config_logger.info("🔒 Loading security manager...")
+    from utils.security_manager import init_security_manager
+    security_manager = init_security_manager(app)
+    config_logger.info("✅ Security manager initialized successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to initialize security manager: {e}")
+    # Continue without security manager for degraded mode
+    security_manager = None
 
-jwt_manager = init_jwt_auth(app)
-audit_logger = init_audit_logger(app)
-api_middleware = init_api_middleware(app)
+# Initialize Phase 2: API Security Layer with detailed error handling
+config_logger.info("🔐 Initializing API security layer...")
+
+try:
+    config_logger.info("🔐 Loading JWT authentication...")
+    from utils.jwt_auth import init_jwt_auth
+    jwt_manager = init_jwt_auth(app)
+    config_logger.info("✅ JWT authentication initialized successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to initialize JWT authentication: {e}")
+    jwt_manager = None
+
+try:
+    config_logger.info("📋 Loading audit logger...")
+    from utils.audit_logger import init_audit_logger
+    audit_logger = init_audit_logger(app)
+    config_logger.info("✅ Audit logger initialized successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to initialize audit logger: {e}")
+    audit_logger = None
+
+try:
+    config_logger.info("🛡️  Loading API middleware...")
+    from utils.api_middleware import init_api_middleware
+    api_middleware = init_api_middleware(app)
+    config_logger.info("✅ API middleware initialized successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to initialize API middleware: {e}")
+    api_middleware = None
+
+config_logger.info("✅ Security systems initialization completed")
 
 # Initialize database retry logic for production stability
 # Import and initialize after db is created to avoid circular imports
@@ -147,6 +245,9 @@ def init_db_retry():
 # Initialize after imports
 db_retry_manager = init_db_retry()
 
+# Import robust database initialization after db is created
+from utils.database_init import init_database_with_diagnostics, safe_init_database, get_database_status
+
 # Exempt API routes from CSRF protection for offline functionality
 @csrf.exempt
 def csrf_exempt_api(func):
@@ -159,18 +260,63 @@ login_manager.login_message = 'Please log in to access this page.'
 logging.basicConfig(level=logging.INFO)
 logger = app.logger
 
-# Import models after db initialization using factory functions
-# DEBUGGING: Force production cache refresh - these are the ONLY model imports
-print("🔍 DEBUG: Loading models from factory functions...")
-from models.user import create_user_model
-from models.vessel import create_vessel_model  
-from models.cargo_tally import create_cargo_tally_model
-print("🔍 DEBUG: Model imports completed successfully")
+# Import models after db initialization using factory functions with enhanced logging
+config_logger.info("📦 Loading model factory functions...")
 
-# Create model classes
-User = create_user_model(db)
-Vessel = create_vessel_model(db)
-CargoTally = create_cargo_tally_model(db)
+try:
+    config_logger.info("📦 Importing user model factory...")
+    from models.user import create_user_model
+    config_logger.info("✅ User model factory imported successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to import user model factory: {e}")
+    raise
+
+try:
+    config_logger.info("📦 Importing vessel model factory...")
+    from models.vessel import create_vessel_model
+    config_logger.info("✅ Vessel model factory imported successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to import vessel model factory: {e}")
+    raise
+
+try:
+    config_logger.info("📦 Importing cargo tally model factory...")
+    from models.cargo_tally import create_cargo_tally_model
+    config_logger.info("✅ Cargo tally model factory imported successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to import cargo tally model factory: {e}")
+    raise
+
+config_logger.info("📦 All model factories imported successfully")
+
+# Create model classes with detailed logging
+config_logger.info("🏗️  Creating model classes...")
+
+try:
+    config_logger.info("🏗️  Creating User model...")
+    User = create_user_model(db)
+    config_logger.info("✅ User model created successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to create User model: {e}")
+    raise
+
+try:
+    config_logger.info("🏗️  Creating Vessel model...")
+    Vessel = create_vessel_model(db)
+    config_logger.info("✅ Vessel model created successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to create Vessel model: {e}")
+    raise
+
+try:
+    config_logger.info("🏗️  Creating CargoTally model...")
+    CargoTally = create_cargo_tally_model(db)
+    config_logger.info("✅ CargoTally model created successfully")
+except Exception as e:
+    config_logger.error(f"❌ Failed to create CargoTally model: {e}")
+    raise
+
+config_logger.info("✅ All model classes created successfully")
 
 # User loader for Flask-Login
 @login_manager.user_loader
@@ -412,31 +558,43 @@ def offline():
     """Offline page when no connectivity"""
     return render_template('offline.html')
 
-# Health check endpoint with database retry status
+# Enhanced health check endpoint with comprehensive database diagnostics
 @app.route('/health')
 def health_check():
-    """Comprehensive health check including database retry logic"""
-    from utils.database_retry import database_health_check
-    
+    """Comprehensive health check including database diagnostics and retry logic"""
     try:
-        # Get database health status
-        db_health = database_health_check()
+        # Get database status with our enhanced diagnostics
+        db_status = get_database_status(app, db)
+        
+        # Also get legacy database retry health if available
+        retry_health = {'status': 'unknown', 'available': False}
+        try:
+            from utils.database_retry import database_health_check
+            retry_health = database_health_check()
+            retry_health['available'] = True
+        except ImportError:
+            logger.debug("Database retry health check not available")
         
         overall_status = 'healthy'
-        if db_health['status'] != 'healthy':
-            overall_status = 'degraded'
+        if not db_status['healthy']:
+            overall_status = 'degraded' if db_status['status'] in ['degraded', 'warnings'] else 'unhealthy'
         
         return jsonify({
             'status': overall_status,
             'timestamp': datetime.utcnow().isoformat(),
-            'version': '3.0.0',
+            'version': DEPLOYMENT_VERSION,
             'offline_ready': True,
-            'database': db_health,
+            'database': {
+                'enhanced_diagnostics': db_status,
+                'retry_logic': retry_health
+            },
             'features': {
-                'database_retry': True,
+                'database_diagnostics': True,
+                'database_retry': retry_health['available'],
                 'csrf_protection': True,
                 'sqlalchemy_cache': True,
-                'service_worker_auth': True
+                'service_worker_auth': True,
+                'comprehensive_error_reporting': True
             }
         }), 200
         
@@ -445,84 +603,151 @@ def health_check():
         return jsonify({
             'status': 'unhealthy',
             'timestamp': datetime.utcnow().isoformat(),
-            'version': '3.0.0',
-            'error': str(e)
+            'version': DEPLOYMENT_VERSION,
+            'error': str(e),
+            'message': 'Health check system failure - check application logs'
         }), 503
 
-# Database initialization function (for wsgi.py and tests)
-def init_database():
-    """Initialize database and create demo users for production deployment"""
-    try:
-        with app.app_context():
-            db.create_all()
-            logger.info("Database tables created successfully")
+# Additional comprehensive health check endpoints
+try:
+    config_logger.info("🏥 Adding comprehensive health check endpoints...")
+    from enhanced_health_check import comprehensive_health_check
+    
+    @app.route('/health/detailed')
+    def detailed_health_check():
+        """Detailed health check with full system information"""
+        try:
+            health_report = comprehensive_health_check()
+            return jsonify(health_report), 200
+        except Exception as e:
+            logger.error(f"Detailed health check failed: {e}")
+            return jsonify({
+                'overall_status': 'error',
+                'timestamp': datetime.utcnow().isoformat(),
+                'error': str(e),
+                'version': DEPLOYMENT_VERSION
+            }), 503
+    
+    @app.route('/health/quick')
+    def quick_health_check():
+        """Quick health check for basic status"""
+        try:
+            # Just check database connectivity
+            from enhanced_health_check import check_database_health
+            database_health = check_database_health()
             
-            # Create demo user if it doesn't exist
-            if not User.query.filter_by(email='demo@maritime.test').first():
-                demo_user = User(
-                    email='demo@maritime.test',
-                    username='demo_user',
-                    password_hash=generate_password_hash('demo123'),
-                    is_active=True
-                )
-                db.session.add(demo_user)
-                db.session.commit()
-                logger.info("Demo user created successfully")
-            
-            return True
-    except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return False
+            return jsonify({
+                'status': 'healthy' if database_health.get('status') == 'healthy' else 'unhealthy',
+                'timestamp': datetime.utcnow().isoformat(),
+                'database': database_health.get('status'),
+                'version': DEPLOYMENT_VERSION
+            }), 200 if database_health.get('status') == 'healthy' else 503
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'timestamp': datetime.utcnow().isoformat(),
+                'error': str(e)
+            }), 503
+    
+    config_logger.info("✅ Comprehensive health check endpoints added")
+    
+except ImportError as e:
+    config_logger.warning(f"⚠️  Comprehensive health check not available: {e}")
+    config_logger.warning("💡 Install psutil for enhanced system monitoring: pip install psutil")
+except Exception as e:
+    config_logger.error(f"❌ Failed to add comprehensive health check endpoints: {e}")
 
-# Database initialization function (used by wsgi.py)
+# Robust database initialization function for production
 def init_database():
-    """Initialize database and create demo users - used by production startup"""
+    """Initialize database with comprehensive diagnostics and error handling
+    
+    This function replaces the previous duplicate implementations with a single,
+    robust version that provides detailed error diagnostics for production debugging
+    and prevents worker crashes.
+    
+    Returns:
+        bool: True if initialization successful, False otherwise
+    """
+    logger.info("🚀 Starting robust database initialization...")
+    
     try:
-        # Create all tables
-        db.create_all()
-        logger.info("Database tables created successfully")
-        
-        users_created = []
-        
-        # Create simple demo user if it doesn't exist
-        if not User.query.filter_by(email='demo@maritime.test').first():
-            demo_user = User(
-                email='demo@maritime.test',
-                username='demo_user',
-                password_hash=generate_password_hash('demo123'),
-                is_active=True
-            )
-            db.session.add(demo_user)
-            users_created.append('demo@maritime.test')
-            logger.info("Demo user created: demo@maritime.test")
-        
-        db.session.commit()
-        logger.info(f"Database initialization completed. Users created: {users_created}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return False
-
-# Database initialization and demo user creation
-@app.route('/init-database')
-def init_database_endpoint():
-    """Initialize database and create all demo users - HTTP endpoint"""
-    try:
-        success = init_database()
+        # Use our comprehensive diagnostics-enabled initialization
+        success = safe_init_database(app, db)
         
         if success:
+            logger.info("✅ Database initialization completed successfully")
+        else:
+            logger.error("❌ Database initialization failed - check diagnostic logs above")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"❌ Critical database initialization error: {e}")
+        # Don't crash the worker - return False to indicate failure
+        return False
+
+# Enhanced database initialization endpoint with diagnostics
+@app.route('/init-database')
+def init_database_endpoint():
+    """Initialize database with comprehensive diagnostics - HTTP endpoint"""
+    try:
+        logger.info("🔧 Manual database initialization requested via HTTP endpoint")
+        
+        # Use our comprehensive initialization with diagnostics
+        success, diagnostic_data = init_database_with_diagnostics(app, db)
+        
+        if success:
+            summary = diagnostic_data.get('summary', {})
             return jsonify({
                 'success': True,
-                'message': 'Database initialized successfully',
-                'login_credentials': 'demo@maritime.test / demo123'
+                'message': 'Database initialized successfully with comprehensive diagnostics',
+                'login_credentials': 'demo@maritime.test / demo123',
+                'diagnostics': {
+                    'checks_passed': summary.get('checks_passed', 0),
+                    'total_checks': summary.get('total_checks', 0),
+                    'success_rate': summary.get('success_rate', 0)
+                },
+                'timestamp': diagnostic_data.get('timestamp')
             })
         else:
-            return jsonify({'error': 'Database initialization failed - check logs'}), 500
+            return jsonify({
+                'error': 'Database initialization failed',
+                'message': 'Check server logs for detailed diagnostic information',
+                'diagnostics_available': True
+            }), 500
         
     except Exception as e:
         logger.error(f"Database initialization endpoint error: {e}")
-        return jsonify({'error': f'Database initialization failed: {str(e)}'}), 500
+        return jsonify({
+            'error': f'Database initialization failed: {str(e)}',
+            'message': 'Check server logs for detailed error information',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
+# Database diagnostics endpoint for production debugging
+@app.route('/diagnostics/database')
+def database_diagnostics_endpoint():
+    """Run comprehensive database diagnostics - production debugging endpoint"""
+    try:
+        logger.info("🔍 Database diagnostics requested via HTTP endpoint")
+        
+        # Get database status with full diagnostics
+        db_status = get_database_status(app, db)
+        
+        return jsonify({
+            'database_diagnostics': db_status,
+            'timestamp': datetime.utcnow().isoformat(),
+            'version': DEPLOYMENT_VERSION,
+            'endpoint': 'database_diagnostics'
+        })
+        
+    except Exception as e:
+        logger.error(f"Database diagnostics endpoint error: {e}")
+        return jsonify({
+            'error': f'Database diagnostics failed: {str(e)}',
+            'message': 'Check server logs for detailed error information',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 # API Routes
 @app.route('/api/vessels/summary')
@@ -688,38 +913,6 @@ csrf.exempt(offline_dashboard_bp)
 
 
 
-# Database initialization function (was missing - causing startup failure)
-def init_database():
-    """Initialize database and create demo users for production deployment
-    
-    This function was missing but called by wsgi.py and test files,
-    causing ImportError on production startup.
-    """
-    try:
-        with app.app_context():
-            # Create all tables
-            db.create_all()
-            logger.info("Database tables created successfully")
-            
-            # Create demo user if not exists
-            if not User.query.filter_by(email='demo@maritime.test').first():
-                demo_user = User(
-                    email='demo@maritime.test',
-                    username='demo_user',
-                    password_hash=generate_password_hash('demo123'),
-                    is_active=True
-                )
-                db.session.add(demo_user)
-                db.session.commit()
-                logger.info("Demo user created: demo@maritime.test / demo123")
-            else:
-                logger.info("Demo user already exists")
-            
-            return True
-            
-    except Exception as e:
-        logger.error(f"Database initialization error: {e}")
-        return False
 
 
 if __name__ == '__main__':
