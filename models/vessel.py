@@ -4,6 +4,7 @@ Stores vessel information from 4-step wizard
 """
 
 from datetime import datetime
+from sqlalchemy import text
 
 # Global cache to prevent multiple Vessel model creation
 _vessel_model_cache = None
@@ -15,6 +16,21 @@ def create_vessel_model(db):
     # Return cached model if already created to prevent redefinition
     if _vessel_model_cache is not None:
         return _vessel_model_cache
+    
+    def check_column_exists(table_name, column_name):
+        """Check if a column exists in the database table"""
+        try:
+            # For PostgreSQL, check information_schema (SQLAlchemy 2.x compatible)
+            with db.engine.connect() as connection:
+                result = connection.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = :table_name AND column_name = :column_name
+                """), {'table_name': table_name, 'column_name': column_name})
+                return result.fetchone() is not None
+        except Exception:
+            # Fallback for other databases or if query fails
+            return False
     
     class Vessel(db.Model):
         """Vessel model for stevedoring operations"""
@@ -133,7 +149,7 @@ def create_vessel_model(db):
             return self.status == 'operations_complete' or self.progress_percentage >= 100.0
         
         def to_dict(self, include_progress=True):
-            """Convert vessel to dictionary for API responses"""
+            """Convert vessel to dictionary for API responses with production schema compatibility"""
             import json
             
             # Safe JSON parsing with error handling
@@ -146,48 +162,95 @@ def create_vessel_model(db):
                     # Return None for invalid JSON data, don't crash the whole operation
                     return None
             
+            # Production-grade safe attribute access with column existence detection
+            def safe_getattr(obj, attr, fallback=None, format_func=None):
+                try:
+                    value = getattr(obj, attr)
+                    if value is not None and format_func:
+                        return format_func(value)
+                    return value
+                except (AttributeError, Exception):
+                    # Column doesn't exist in database or access failed
+                    return fallback
+            
+            # Safe date/datetime formatting
+            def format_date(dt_obj):
+                if dt_obj:
+                    return dt_obj.isoformat()
+                return None
+            
+            def format_time(time_obj):
+                if time_obj:
+                    return time_obj.isoformat()
+                return None
+            
+            # Production-grade data serialization with schema compatibility
             data = {
+                # Core fields (should always exist)
                 'id': self.id,
                 'name': self.name,
-                'shipping_line': self.shipping_line,
-                'vessel_type': self.vessel_type,
-                'port_of_call': self.port_of_call,
-                'operation_start_date': self.operation_start_date.isoformat() if self.operation_start_date else None,
-                'operation_end_date': self.operation_end_date.isoformat() if self.operation_end_date else None,
-                'stevedoring_company': self.stevedoring_company,
-                'operation_type': self.operation_type,
-                'berth_assignment': self.berth_assignment,
-                'operations_manager': self.operations_manager,
-                'team_assignments': safe_json_loads(self.team_assignments),
-                'cargo_configuration': safe_json_loads(self.cargo_configuration),
-                'total_drivers': self.total_drivers,
-                'shift_start_time': self.shift_start_time.isoformat() if self.shift_start_time else None,
-                'shift_end_time': self.shift_end_time.isoformat() if self.shift_end_time else None,
-                'ship_start_time': self.ship_start_time.isoformat() if self.ship_start_time else None,
-                'ship_complete_time': self.ship_complete_time.isoformat() if self.ship_complete_time else None,
-                'number_of_breaks': self.number_of_breaks,
-                'target_completion': self.target_completion.isoformat() if self.target_completion else None,
-                'number_of_vans': self.number_of_vans,
-                'number_of_wagons': self.number_of_wagons,
-                'number_of_low_decks': self.number_of_low_decks,
-                'van_details': safe_json_loads(self.van_details),
-                'wagon_details': safe_json_loads(self.wagon_details),
-                'status': self.status,
-                'current_berth': self.current_berth,
-                'wizard_completed': self.wizard_completed,
-                'created_at': self.created_at.isoformat() if self.created_at else None,
-                'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-                'document_source': self.document_source,
-                # Legacy fields
-                'eta': self.eta.isoformat() if self.eta else None,
-                'etd': self.etd.isoformat() if self.etd else None,
-                'total_cargo_capacity': self.total_cargo_capacity,
-                'cargo_type': self.cargo_type,
-                'heavy_equipment_count': self.heavy_equipment_count,
-                'shift_start': self.shift_start.isoformat() if self.shift_start else None,
-                'shift_end': self.shift_end.isoformat() if self.shift_end else None,
-                'drivers_assigned': self.drivers_assigned,
-                'tico_vehicles_needed': self.tico_vehicles_needed
+                'status': safe_getattr(self, 'status', 'expected'),
+                'created_at': safe_getattr(self, 'created_at', None, format_date),
+                'updated_at': safe_getattr(self, 'updated_at', None, format_date),
+                
+                # Step 1 - Basic vessel information (may be missing in old schemas)
+                'shipping_line': safe_getattr(self, 'shipping_line', 'K-line'),
+                'vessel_type': safe_getattr(self, 'vessel_type', 'Auto Only'),
+                'port_of_call': safe_getattr(self, 'port_of_call', 'Colonel Island'),
+                'operation_start_date': safe_getattr(self, 'operation_start_date', None, format_date),
+                'operation_end_date': safe_getattr(self, 'operation_end_date', None, format_date),
+                'stevedoring_company': safe_getattr(self, 'stevedoring_company', 'APS Stevedoring'),
+                'operation_type': safe_getattr(self, 'operation_type', 'Discharge Only'),
+                'berth_assignment': safe_getattr(self, 'berth_assignment', 'Berth 1'),
+                'operations_manager': safe_getattr(self, 'operations_manager', 'Jonathan'),
+                
+                # Step 2 - Team assignments (JSON)
+                'team_assignments': safe_json_loads(safe_getattr(self, 'team_assignments', None)),
+                
+                # Step 3 - Cargo configuration (JSON)
+                'cargo_configuration': safe_json_loads(safe_getattr(self, 'cargo_configuration', None)),
+                
+                # Step 4 - Operational parameters
+                'total_drivers': safe_getattr(self, 'total_drivers', 0),
+                'shift_start_time': safe_getattr(self, 'shift_start_time', None, format_time),
+                'shift_end_time': safe_getattr(self, 'shift_end_time', None, format_time),
+                'ship_start_time': safe_getattr(self, 'ship_start_time', None, format_time),
+                'ship_complete_time': safe_getattr(self, 'ship_complete_time', None, format_time),
+                'number_of_breaks': safe_getattr(self, 'number_of_breaks', 0),
+                'target_completion': safe_getattr(self, 'target_completion', None, format_date),
+                'number_of_vans': safe_getattr(self, 'number_of_vans', 0),
+                'number_of_wagons': safe_getattr(self, 'number_of_wagons', 0),
+                'number_of_low_decks': safe_getattr(self, 'number_of_low_decks', 0),
+                
+                # TICO vehicle details (JSON)
+                'van_details': safe_json_loads(safe_getattr(self, 'van_details', None)),
+                'wagon_details': safe_json_loads(safe_getattr(self, 'wagon_details', None)),
+                
+                # Status and tracking
+                'current_berth': safe_getattr(self, 'current_berth', None),
+                'progress_percentage': safe_getattr(self, 'progress_percentage', 0.0),
+                'created_by_id': safe_getattr(self, 'created_by_id', None),
+                
+                # Document processing metadata
+                'document_source': safe_getattr(self, 'document_source', None),
+                'wizard_completed': safe_getattr(self, 'wizard_completed', False),
+                
+                # Wizard step data (JSON)
+                'step_1_data': safe_json_loads(safe_getattr(self, 'step_1_data', None)),
+                'step_2_data': safe_json_loads(safe_getattr(self, 'step_2_data', None)),
+                'step_3_data': safe_json_loads(safe_getattr(self, 'step_3_data', None)),
+                'step_4_data': safe_json_loads(safe_getattr(self, 'step_4_data', None)),
+                
+                # Legacy fields for backward compatibility
+                'eta': safe_getattr(self, 'eta', None, format_date),
+                'etd': safe_getattr(self, 'etd', None, format_date),
+                'total_cargo_capacity': safe_getattr(self, 'total_cargo_capacity', 0),
+                'cargo_type': safe_getattr(self, 'cargo_type', 'automobile'),
+                'heavy_equipment_count': safe_getattr(self, 'heavy_equipment_count', 0),
+                'shift_start': safe_getattr(self, 'shift_start', None, format_time),
+                'shift_end': safe_getattr(self, 'shift_end', None, format_time),
+                'drivers_assigned': safe_getattr(self, 'drivers_assigned', 0),
+                'tico_vehicles_needed': safe_getattr(self, 'tico_vehicles_needed', 0)
             }
             
             if include_progress:
@@ -211,6 +274,40 @@ def create_vessel_model(db):
         def get_by_status(cls, status):
             """Get vessels by status"""
             return cls.query.filter_by(status=status).all()
+    
+    # Production database migration and schema compatibility
+    try:
+        from production_db_migration import initialize_production_migration, run_migration_if_needed
+        
+        # Initialize migration system with Flask app context
+        from flask import current_app
+        if current_app:
+            migration_system = initialize_production_migration(current_app, db)
+            
+            # Run comprehensive migration if needed
+            success, result = run_migration_if_needed()
+            if success and result:
+                print(f"✅ Production migration completed: {len(result)} columns added")
+            elif not success:
+                print(f"⚠️  Migration issue: {result}")
+            else:
+                print("✅ Database schema is up to date")
+            
+    except Exception as e:
+        print(f"⚠️  Migration system not available: {e}")
+        
+        # Fallback to basic column check for critical columns (SQLAlchemy 2.x compatible)
+        try:
+            if not check_column_exists('vessels', 'shipping_line'):
+                with db.engine.connect() as connection:
+                    connection.execute(text("""
+                        ALTER TABLE vessels 
+                        ADD COLUMN shipping_line VARCHAR(50) DEFAULT 'K-line'
+                    """))
+                    connection.commit()
+                print("✅ Added missing shipping_line column (fallback)")
+        except Exception as fallback_error:
+            print(f"⚠️  Fallback migration failed: {fallback_error}")
     
     # Cache the model to prevent redefinition
     _vessel_model_cache = Vessel

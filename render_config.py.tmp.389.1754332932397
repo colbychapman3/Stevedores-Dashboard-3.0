@@ -9,11 +9,10 @@ from datetime import timedelta
 class RenderConfig:
     """Production configuration for Render deployment"""
     
-    # Basic Flask settings
-    # SECURITY FIX: Require SECRET_KEY - no hardcoded fallback for production
+    # Basic Flask settings - SECURITY FIX: Require SECRET_KEY from environment
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        raise ValueError("SECRET_KEY environment variable is required for production deployment")
+        raise ValueError("SECRET_KEY environment variable is required for security")
     DEBUG = False
     TESTING = False
     
@@ -51,9 +50,8 @@ class RenderConfig:
     SYNC_RETRY_ATTEMPTS = 3
     DOCUMENT_PROCESSING_TIMEOUT = 30
     
-    # Rate limiting - CRITICAL FIX: Use memory storage by default for reliability
-    # Redis is optional - health checks must never depend on external services
-    RATELIMIT_STORAGE_URL = 'memory://'  # Always use memory for production stability
+    # Rate limiting
+    RATELIMIT_STORAGE_URL = os.environ.get('REDIS_URL')
     RATELIMIT_DEFAULT = "100 per hour"
     
     # File uploads
@@ -73,39 +71,9 @@ class RenderConfig:
         app.logger.info('🚢 Stevedores Dashboard 3.0 starting on Render')
         app.logger.info(f'⚓ PWA Cache Version: {app.config.get("PWA_CACHE_VERSION")}')
 
-# Testing configuration
-class TestingConfig:
-    """Testing configuration"""
-    TESTING = True
-    DEBUG = True
-    SECRET_KEY = 'test-secret-key'
-    
-    # In-memory database for testing
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # SQLite-specific engine options (no pool settings)
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-    }
-    
-    # Disable security for testing
-    WTF_CSRF_ENABLED = False
-    WTF_CSRF_TIME_LIMIT = None
-    
-    # Fast testing settings
-    CACHE_TYPE = 'simple'
-    PERMANENT_SESSION_LIFETIME = timedelta(minutes=5)
-    
-    @staticmethod
-    def init_app(app):
-        """Initialize app for testing"""
-        pass
-
 # Configuration mapping
 config = {
     'render': RenderConfig,
     'production': RenderConfig,
-    'testing': TestingConfig,
     'default': RenderConfig
 }

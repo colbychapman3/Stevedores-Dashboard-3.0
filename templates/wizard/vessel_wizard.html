@@ -150,10 +150,10 @@
                     <i class="fas fa-ship mr-2"></i>1. Vessel Info
                 </div>
                 <div id="step2-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
-                    <i class="fas fa-boxes mr-2"></i>2. Cargo Config
+                    <i class="fas fa-users mr-2"></i>2. Team Assignment
                 </div>
                 <div id="step3-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
-                    <i class="fas fa-users mr-2"></i>3. Operations
+                    <i class="fas fa-boxes mr-2"></i>3. Cargo Config
                 </div>
                 <div id="step4-indicator" class="step-indicator px-4 py-2 rounded-full text-white/60 font-semibold">
                     <i class="fas fa-cog mr-2"></i>4. Operations
@@ -167,12 +167,23 @@
         <!-- Document Upload Section -->
 
         <!-- Wizard Form -->
-        <form id="vesselWizardForm" class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
+        <form id="vesselWizardForm" action="/wizard/" method="POST" onsubmit="handleFormSubmission(event)" class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
             <!-- Step 1: Vessel Information -->
             <div id="step1" class="wizard-step">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-ship text-blue-600 mr-3"></i>Step 1: Vessel Information
                 </h2>
+                
+                <!-- Step 1 Validation Errors -->
+                <div id="step1-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step1-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
                 
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -227,7 +238,7 @@
                         <select id="shippingLine" name="shippingLine" required onchange="updateVesselTypeOptions()"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Shipping Line</option>
-                            <option value="K-line">K-line</option>
+                            <option value="K-line" selected>K-line</option>
                             <option value="Grimaldi">Grimaldi</option>
                             <option value="Glovis">Glovis</option>
                             <option value="MOL">MOL</option>
@@ -239,7 +250,7 @@
                         <select id="vesselType" name="vesselType" required
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Vessel Type</option>
-                            <option value="Auto + Heavy" class="k-line-only" style="display: none;">Auto + Heavy</option>
+                            <option value="Auto + Heavy" class="k-line-only" selected>Auto + Heavy</option>
                             <option value="Auto Only">Auto Only</option>
                             <option value="Heavy Only" class="k-line-only" style="display: none;">Heavy Only</option>
                         </select>
@@ -276,7 +287,7 @@
                         <select id="operationType" name="operationType" required
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Operation</option>
-                            <option value="Discharge Only">Discharge Only</option>
+                            <option value="Discharge Only" selected>Discharge Only</option>
                             <option value="Loading Only">Loading Only</option>
                             <option value="Discharge + Loadback">Discharge + Loadback</option>
                         </select>
@@ -287,7 +298,7 @@
                         <select id="berthAssignment" name="berthAssignment" required
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Berth</option>
-                            <option value="Berth 1">Berth 1</option>
+                            <option value="Berth 1" selected>Berth 1</option>
                             <option value="Berth 2">Berth 2</option>
                             <option value="Berth 3">Berth 3</option>
                         </select>
@@ -298,7 +309,7 @@
                         <select id="operationsManager" name="operationsManager" required
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                             <option value="">Select Operations Manager</option>
-                            <option value="Jonathan">Jonathan</option>
+                            <option value="Jonathan" selected>Jonathan</option>
                             <option value="Joe">Joe</option>
                             <option value="Mark">Mark</option>
                         </select>
@@ -318,6 +329,17 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-users text-blue-600 mr-3"></i>Step 2: Stevedore Team Assignment
                 </h2>
+                
+                <!-- Step 2 Validation Errors -->
+                <div id="step2-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step2-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
                 
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -371,7 +393,7 @@
                             <select id="autoOperationsMembers" name="autoOperationsMembers" onchange="updateTeamMembers('autoOperations')"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="0">0</option>
-                                <option value="1">1</option>
+                                <option value="1" selected>1</option>
                                 <option value="2">2</option>
                                 <option value="3">3</option>
                                 <option value="4">4</option>
@@ -428,6 +450,17 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">
                     <i class="fas fa-boxes text-blue-600 mr-3"></i>Step 3: Cargo Configuration
                 </h2>
+                
+                <!-- Step 3 Validation Errors -->
+                <div id="step3-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step3-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
                 
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -595,6 +628,17 @@
                     <i class="fas fa-cog text-blue-600 mr-3"></i>Step 4: Operational Parameters
                 </h2>
                 
+                <!-- Step 4 Validation Errors -->
+                <div id="step4-errors" class="hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        <h4 class="text-red-800 font-semibold">Please fix the following issues:</h4>
+                    </div>
+                    <ul id="step4-error-list" class="text-red-700 text-sm list-disc list-inside">
+                        <!-- Error messages will be populated here -->
+                    </ul>
+                </div>
+                
                 <!-- Document Auto-fill Section -->
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                     <h3 class="text-lg font-semibold text-blue-900 mb-4">
@@ -688,6 +732,17 @@
                     </div>
                 </div>
 
+                <!-- Review Summary Section -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-clipboard-check text-blue-600 mr-2"></i>Review Your Configuration
+                    </h3>
+                    <div id="reviewSummary" class="bg-white rounded-lg p-4">
+                        <!-- Review summary will be populated by JavaScript -->
+                        <p class="text-gray-500 text-center">Complete the operational parameters below to generate review summary</p>
+                    </div>
+                </div>
+
                 <!-- TICO Transportation Section -->
                 <div class="bg-white border border-gray-200 rounded-lg p-6 mb-8">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -775,6 +830,7 @@
                         <i class="fas fa-arrow-left mr-2"></i> Previous
                     </button>
                     <button type="submit" 
+                            onclick="handleFormSubmission(event)"
                             class="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg transition duration-200">
                         <i class="fas fa-rocket mr-2"></i> Create Vessel Operation
                     </button>

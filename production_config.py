@@ -84,6 +84,24 @@ class ProductionConfig:
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
     PROMETHEUS_METRICS = os.environ.get('PROMETHEUS_METRICS', 'false').lower() == 'true'
     
+    # Memory Monitoring Configuration
+    MEMORY_MONITORING_ENABLED = os.environ.get('MEMORY_MONITORING_ENABLED', 'true').lower() == 'true'
+    MEMORY_WARNING_THRESHOLD = float(os.environ.get('MEMORY_WARNING_THRESHOLD', 75.0))
+    MEMORY_CRITICAL_THRESHOLD = float(os.environ.get('MEMORY_CRITICAL_THRESHOLD', 85.0))
+    MEMORY_EMERGENCY_THRESHOLD = float(os.environ.get('MEMORY_EMERGENCY_THRESHOLD', 95.0))
+    MEMORY_CHECK_INTERVAL = int(os.environ.get('MEMORY_CHECK_INTERVAL', 15))
+    MEMORY_CONTAINER_LIMIT_MB = int(os.environ.get('MEMORY_LIMIT_MB', 512))
+    MEMORY_SAFETY_BUFFER_MB = int(os.environ.get('MEMORY_SAFETY_BUFFER_MB', 64))
+    
+    # Memory optimization settings
+    MEMORY_AGGRESSIVE_GC = os.environ.get('MEMORY_AGGRESSIVE_GC', 'true').lower() == 'true'
+    MEMORY_WORKER_RESTART_THRESHOLD = float(os.environ.get('MEMORY_WORKER_RESTART_THRESHOLD', 90.0))
+    MEMORY_MAX_REQUESTS_PER_WORKER = int(os.environ.get('MEMORY_MAX_REQUESTS_PER_WORKER', 800))
+    
+    # Memory alerts and logging
+    MEMORY_ALERT_COOLDOWN = int(os.environ.get('MEMORY_ALERT_COOLDOWN', 60))
+    MEMORY_DETAILED_LOGGING = os.environ.get('MEMORY_DETAILED_LOGGING', 'true').lower() == 'true'
+    
     @staticmethod
     def init_app(app):
         """Initialize application with production settings"""

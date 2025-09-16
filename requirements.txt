@@ -40,3 +40,6 @@ click==8.1.7
 
 # Production WSGI Server
 gunicorn==21.2.0
+
+# System Monitoring
+psutil==5.9.8
