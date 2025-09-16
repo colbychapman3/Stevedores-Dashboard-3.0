@@ -300,7 +300,7 @@ class OfflineDocumentProcessor:
     @staticmethod
     def generate_client_processor() -> str:
         """Generate JavaScript code for client-side document processing"""
-        return '''
+        return r'''
         class OfflineDocumentProcessor {
             constructor() {
                 this.patterns = this.initializePatterns();
@@ -308,14 +308,14 @@ class OfflineDocumentProcessor:
             
             initializePatterns() {
                 return {
-                    vessel_name: /(?:vessel|ship|mv|m\\/v)\\s*:?\\s*([a-zA-Z0-9\\s\\-\\.]+)/i,
-                    vessel_type: /(?:type|class|category)\\s*:?\\s*(container|bulk|tanker|roro|general cargo|automobile)/i,
-                    port_of_call: /(?:port\\s*of\\s*call|destination|port)\\s*:?\\s*([a-zA-Z\\s\\-\\.]+)/i,
-                    eta: /(?:eta|arrival|expected)\\s*:?\\s*(\\d{1,2}[-\/]\\d{1,2}[-\/]\\d{2,4}|\\d{4}-\\d{2}-\\d{2})/i,
-                    cargo_type: /(?:cargo|commodity)\\s*:?\\s*(containers?|automobiles?|bulk|steel|grain|machinery)/i,
-                    total_capacity: /(?:capacity|total|units?)\\s*:?\\s*(\\d+)/i,
-                    berth: /(?:berth|pier|dock)\\s*:?\\s*([a-zA-Z0-9\\s\\-]+)/i,
-                    crew_size: /(?:crew|personnel|workers?)\\s*:?\\s*(\\d+)/i,
+                    vessel_name: /(?:vessel|ship|mv|m\/v)\s*:?\s*([a-zA-Z0-9\s\-\.]+)/i,
+                    vessel_type: /(?:type|class|category)\s*:?\s*(container|bulk|tanker|roro|general cargo|automobile)/i,
+                    port_of_call: /(?:port\s*of\s*call|destination|port)\s*:?\s*([a-zA-Z\s\-\.]+)/i,
+                    eta: /(?:eta|arrival|expected)\s*:?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}|\d{4}-\d{2}-\d{2})/i,
+                    cargo_type: /(?:cargo|commodity)\s*:?\s*(containers?|automobiles?|bulk|steel|grain|machinery)/i,
+                    total_capacity: /(?:capacity|total|units?)\s*:?\s*(\d+)/i,
+                    berth: /(?:berth|pier|dock)\s*:?\s*([a-zA-Z0-9\s\-]+)/i,
+                    crew_size: /(?:crew|personnel|workers?)\s*:?\s*(\d+)/i,
                 };
             }
             

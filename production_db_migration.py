@@ -191,7 +191,7 @@ def initialize_production_migration(app, db):
 def run_migration_if_needed():
     """Run migration only if columns are missing"""
     if production_migration.app is None:
-        logger.warning("Migration system not initialized")
+        # Silently return if not initialized to avoid spam warnings
         return False, "Not initialized"
     
     with production_migration.app.app_context():
