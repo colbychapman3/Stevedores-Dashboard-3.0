@@ -538,42 +538,108 @@ function populateFormFromExtractedData(data) {
 function generateReviewSummary() {
     const summary = document.getElementById('reviewSummary');
     
+    // Get vessel information
     const vesselName = getValue('vesselName');
+    const shippingLine = getValue('shippingLine'); 
     const vesselType = getValue('vesselType');
     const port = getValue('port');
-    const operationDate = getValue('operationDate');
-    const totalAutomobiles = getValue('totalAutomobiles') || '0';
-    const heavyEquipment = getValue('heavyEquipment') || '0';
-    const shiftStart = getValue('shiftStart');
-    const shiftEnd = getValue('shiftEnd');
-    const driversAssigned = getValue('driversAssigned') || '0';
-    const ticoVehicles = getValue('ticoVehicles') || '0';
+    const operationStartDate = getValue('operationStartDate');
+    const operationEndDate = getValue('operationEndDate');
+    const operationType = getValue('operationType');
+    const berthAssignment = getValue('berthAssignment');
+    const operationsManager = getValue('operationsManager');
+    
+    // Get cargo information based on operation type
+    let totalAutos = 0;
+    let heavyEquipment = 0;
+    
+    if (operationType === 'Discharge Only' || operationType === 'Discharge + Loadback') {
+        totalAutos += parseInt(getValue('dischargeTotalAutos')) || 0;
+        heavyEquipment += parseInt(getValue('dischargeHeavy')) || 0;
+    }
+    if (operationType === 'Loading Only') {
+        totalAutos += parseInt(getValue('loadingTotalAutos')) || 0;
+        heavyEquipment += parseInt(getValue('loadingHeavy')) || 0;
+    }
+    if (operationType === 'Discharge + Loadback') {
+        totalAutos += parseInt(getValue('loadbackTotalAutos')) || 0;
+        heavyEquipment += parseInt(getValue('loadbackHeavy')) || 0;
+    }
+    
+    // Get team information
+    const autoOperationsMembers = getValue('autoOperationsMembers') || '0';
+    const highHeavyMembers = getValue('highHeavyMembers') || '0';
+    
+    // Get operational parameters
+    const totalDrivers = getValue('totalDrivers');
+    const shiftStartTime = getValue('shiftStartTime');
+    const shiftEndTime = getValue('shiftEndTime');
+    const shipStartTime = getValue('shipStartTime');
+    const shipCompleteTime = getValue('shipCompleteTime');
+    const numberOfBreaks = getValue('numberOfBreaks') || '0';
+    
+    // Calculate TICO vehicles
+    const numberOfVans = parseInt(getValue('numberOfVans')) || 0;
+    const numberOfWagons = parseInt(getValue('numberOfWagons')) || 0;
+    const numberOfLowDecks = parseInt(getValue('numberOfLowDecks')) || 0;
+    const totalTicoVehicles = numberOfVans + numberOfWagons;
     
     summary.innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Vessel Information</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                    <i class="fas fa-ship text-blue-600 mr-2"></i>Vessel Information
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Name:</strong> ${vesselName}</div>
-                    <div><strong>Type:</strong> ${vesselType}</div>
-                    <div><strong>Port:</strong> ${port}</div>
-                    <div><strong>Date:</strong> ${formatDate(operationDate)}</div>
+                    <div><strong>Name:</strong> ${vesselName || 'Not specified'}</div>
+                    <div><strong>Shipping Line:</strong> ${shippingLine || 'Not specified'}</div>
+                    <div><strong>Type:</strong> ${vesselType || 'Not specified'}</div>
+                    <div><strong>Port:</strong> ${port || 'Not specified'}</div>
+                    <div><strong>Operation:</strong> ${operationType || 'Not specified'}</div>
+                    <div><strong>Berth:</strong> ${berthAssignment || 'Not specified'}</div>
+                    <div><strong>Manager:</strong> ${operationsManager || 'Not specified'}</div>
+                    <div><strong>Start Date:</strong> ${formatDate(operationStartDate)}</div>
+                    <div><strong>End Date:</strong> ${formatDate(operationEndDate)}</div>
                 </div>
             </div>
             <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Cargo Configuration</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                    <i class="fas fa-boxes text-green-600 mr-2"></i>Cargo Configuration
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Automobiles:</strong> ${totalAutomobiles}</div>
+                    <div><strong>Total Automobiles:</strong> ${totalAutos}</div>
                     <div><strong>Heavy Equipment:</strong> ${heavyEquipment}</div>
-                    <div><strong>Cargo Type:</strong> ${getValue('cargoType') || 'Automobile'}</div>
+                    <div><strong>Operation Type:</strong> ${operationType || 'Not specified'}</div>
+                </div>
+                
+                <h4 class="text-md font-semibold text-gray-800 mt-4 mb-2">
+                    <i class="fas fa-users text-orange-600 mr-2"></i>Team Assignment
+                </h4>
+                <div class="space-y-2 text-sm">
+                    <div><strong>Auto Operations:</strong> ${autoOperationsMembers} members</div>
+                    ${shippingLine === 'K-line' ? `<div><strong>High Heavy Team:</strong> ${highHeavyMembers} members</div>` : ''}
                 </div>
             </div>
             <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Operations</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">
+                    <i class="fas fa-cog text-purple-600 mr-2"></i>Operations
+                </h3>
                 <div class="space-y-2 text-sm">
-                    <div><strong>Shift:</strong> ${shiftStart || 'Not set'} - ${shiftEnd || 'Not set'}</div>
-                    <div><strong>Drivers:</strong> ${driversAssigned}</div>
-                    <div><strong>TICO Vehicles:</strong> ${ticoVehicles}</div>
+                    <div><strong>Total Drivers:</strong> ${totalDrivers || 'Not specified'}</div>
+                    <div><strong>Shift:</strong> ${shiftStartTime || 'Not set'} - ${shiftEndTime || 'Not set'}</div>
+                    <div><strong>Ship Operation:</strong> ${shipStartTime || 'Not set'} - ${shipCompleteTime || 'Not set'}</div>
+                    <div><strong>Breaks:</strong> ${numberOfBreaks} (${parseInt(numberOfBreaks) * 60} minutes)</div>
+                </div>
+                
+                <h4 class="text-md font-semibold text-gray-800 mt-4 mb-2">
+                    <i class="fas fa-van-shuttle text-green-600 mr-2"></i>TICO Transportation
+                </h4>
+                <div class="space-y-2 text-sm">
+                    <div><strong>Vans:</strong> ${numberOfVans} (${numberOfVans * 7} driver capacity)</div>
+                    <div><strong>Wagons:</strong> ${numberOfWagons} (${numberOfWagons * 5} driver capacity)</div>
+                    <div><strong>Low Decks:</strong> ${numberOfLowDecks}</div>
+                    <div><strong>Total TICO Vehicles:</strong> ${totalTicoVehicles}</div>
+                    <div><strong>Total Transport Capacity:</strong> ${(numberOfVans * 7) + (numberOfWagons * 5)} drivers</div>
                 </div>
             </div>
         </div>
@@ -597,6 +663,14 @@ function handleFormSubmission(event) {
     // Gather all form data
     const formData = gatherAllFormData();
     
+    // Debug: Log form data being submitted
+    console.log('📊 Form Data Being Submitted:', formData);
+    console.log('📋 Total fields:', Object.keys(formData).length);
+    console.log('🚢 Vessel Name:', formData.vesselName);
+    console.log('📦 Discharge Autos:', formData.dischargeTotalAutos);
+    console.log('👷 Total Drivers:', formData.totalDrivers);
+    console.log('🚐 Number of Vans:', formData.numberOfVans);
+    
     // Try online submission first, fallback to sync manager
     if (navigator.onLine) {
         fetch('/wizard/', {
@@ -606,11 +680,20 @@ function handleFormSubmission(event) {
             },
             body: JSON.stringify(formData)
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Response Status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('✅ Server Response:', data);
             if (data.success) {
+                console.log('🎉 Vessel created successfully! ID:', data.vessel_id);
                 showSubmissionSuccess(data);
             } else {
+                console.error('❌ Server returned error:', data.error);
                 throw new Error(data.error || 'Submission failed');
             }
         })

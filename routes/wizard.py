@@ -90,11 +90,11 @@ def vessel_wizard():
                 'success': True,
                 'vessel_id': vessel.id,
                 'message': 'Vessel operation created successfully!',
-                'redirect_url': url_for('vessel_details', vessel_id=vessel.id)
+                'redirect_url': url_for('dashboard')
             })
         
         flash(f'Vessel operation "{vessel.name}" created successfully!', 'success')
-        return redirect(url_for('vessel_details', vessel_id=vessel.id))
+        return redirect(url_for('dashboard'))
         
     except Exception as e:
         if request.is_json:
