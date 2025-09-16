@@ -201,9 +201,9 @@ function validateStep2() {
         }
     }
     
-    // Validate high heavy team if K-line or Glovis
+    // Validate high heavy team if K-line, Glovis, or custom shipping line
     const shippingLine = getValue('shippingLine');
-    if ((shippingLine === 'K-line' || shippingLine === 'Glovis') && highHeavyMembers > 0) {
+    if ((shippingLine === 'K-line' || shippingLine === 'Glovis' || shippingLine === 'Create Other') && highHeavyMembers > 0) {
         for (let i = 1; i <= highHeavyMembers; i++) {
             const memberValue = getValue(`highHeavyMember${i}`);
             const customValue = getValue(`highHeavyMemberCustom${i}`);
@@ -625,7 +625,7 @@ function generateReviewSummary() {
                 </h4>
                 <div class="space-y-2 text-sm">
                     <div><strong>Auto Operations:</strong> ${autoOperationsMembers} members</div>
-                    ${(shippingLine === 'K-line' || shippingLine === 'Glovis') ? `<div><strong>High Heavy Team:</strong> ${highHeavyMembers} members</div>` : ''}
+                    ${(shippingLine === 'K-line' || shippingLine === 'Glovis' || shippingLine === 'Create Other') ? `<div><strong>High Heavy Team:</strong> ${highHeavyMembers} members</div>` : ''}
                 </div>
             </div>
             <div>
@@ -1147,14 +1147,14 @@ function updateVesselTypeOptions() {
         customShippingLineInput.value = '';
     }
     
-    // Apply K-line rules to both K-line and Glovis
-    if (shippingLine === 'K-line' || shippingLine === 'Glovis') {
-        // Show all options for K-line and Glovis (including Heavy Only and Auto + Heavy)
+    // Apply K-line rules to K-line, Glovis, and custom shipping lines
+    if (shippingLine === 'K-line' || shippingLine === 'Glovis' || shippingLine === 'Create Other') {
+        // Show all options for K-line, Glovis, and custom shipping lines (including Heavy Only and Auto + Heavy)
         kLineOptions.forEach(option => {
             option.style.display = 'block';
         });
-    } else if (['MOL', 'Create Other'].includes(shippingLine)) {
-        // Hide Heavy Only and Auto + Heavy for other lines (MOL and custom)
+    } else if (shippingLine === 'MOL') {
+        // Hide Heavy Only and Auto + Heavy for MOL only
         kLineOptions.forEach(option => {
             option.style.display = 'none';
         });
@@ -1172,8 +1172,8 @@ function updateStep2Visibility() {
     const shippingLine = document.getElementById('shippingLine').value;
     const highHeavySection = document.getElementById('highHeavySection');
     
-    // Show High Heavy section for both K-line and Glovis
-    if (shippingLine === 'K-line' || shippingLine === 'Glovis') {
+    // Show High Heavy section for K-line, Glovis, and custom shipping lines
+    if (shippingLine === 'K-line' || shippingLine === 'Glovis' || shippingLine === 'Create Other') {
         highHeavySection.style.display = 'block';
     } else {
         highHeavySection.style.display = 'none';
@@ -1219,8 +1219,8 @@ function updateStep3HeavyEquipment() {
     
     heavyContainers.forEach(container => {
         if (container) {
-            // Show heavy equipment for both K-line and Glovis when vessel type is Auto + Heavy
-            if ((shippingLine === 'K-line' || shippingLine === 'Glovis') && vesselType === 'Auto + Heavy') {
+            // Show heavy equipment for K-line, Glovis, and custom shipping lines when vessel type is Auto + Heavy
+            if ((shippingLine === 'K-line' || shippingLine === 'Glovis' || shippingLine === 'Create Other') && vesselType === 'Auto + Heavy') {
                 container.style.display = 'block';
             } else {
                 container.style.display = 'none';
