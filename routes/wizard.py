@@ -90,6 +90,15 @@ def vessel_wizard():
         db.session.add(vessel)
         db.session.commit()
         
+        # Debug logging
+        print(f"✅ Vessel created successfully! ID: {vessel.id}, Name: {vessel.name}")
+        print(f"📊 Vessel details - Shipping Line: {vessel.shipping_line}, Type: {vessel.vessel_type}")
+        print(f"📅 Operation dates: {vessel.operation_start_date} to {vessel.operation_end_date}")
+        
+        # Verify vessel was actually saved
+        vessel_count = db.session.query(db.func.count(Vessel.id)).scalar()
+        print(f"🔢 Total vessels in database now: {vessel_count}")
+        
         if request.is_json:
             return jsonify({
                 'success': True,

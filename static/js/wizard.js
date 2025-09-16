@@ -699,6 +699,11 @@ function handleFormSubmission(event) {
             console.log('✅ Server Response:', data);
             if (data.success) {
                 console.log('🎉 Vessel created successfully! ID:', data.vessel_id);
+                console.log('🔄 Redirect URL:', data.redirect_url);
+                
+                // Add extra logging to debug dashboard issue
+                console.log('📊 About to show success modal and redirect...');
+                
                 showSubmissionSuccess(data);
             } else {
                 console.error('❌ Server returned error:', data.error);
@@ -770,19 +775,23 @@ function saveForOfflineSubmission(formData) {
 }
 
 function showSubmissionSuccess(data) {
+    console.log('🎊 Showing submission success modal...');
     document.getElementById('submissionLoading').classList.add('hidden');
     document.getElementById('submissionSuccess').classList.remove('hidden');
     
     // Clear saved wizard data
     localStorage.removeItem('vesselWizardData');
+    console.log('🗑️ Cleared saved wizard data from localStorage');
     
     // Redirect after a delay
+    const redirectUrl = data.redirect_url || '/dashboard';
+    // Add cache-busting parameter to force fresh load
+    const cacheBustedUrl = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + 'refresh=' + Date.now();
+    console.log('⏱️ Will redirect to:', cacheBustedUrl, 'in 2 seconds...');
+    
     setTimeout(() => {
-        if (data.redirect_url) {
-            window.location.href = data.redirect_url;
-        } else {
-            window.location.href = '/dashboard';
-        }
+        console.log('🚀 Redirecting now to:', cacheBustedUrl);
+        window.location.href = cacheBustedUrl;
     }, 2000);
 }
 
@@ -799,7 +808,18 @@ function getValue(elementId) {
 
 function formatDate(dateString) {
     if (!dateString) return 'Not set';
-    const date = new Date(dateString);
+    
+    // Handle date input properly to avoid timezone issues
+    // If it's a date string like "2025-09-16", parse it as local date
+    let date;
+    if (dateString.includes('-') && dateString.length === 10) {
+        // Parse YYYY-MM-DD format as local date to avoid timezone conversion
+        const [year, month, day] = dateString.split('-').map(Number);
+        date = new Date(year, month - 1, day); // month is 0-indexed
+    } else {
+        date = new Date(dateString);
+    }
+    
     return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',
