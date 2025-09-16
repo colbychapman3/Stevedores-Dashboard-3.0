@@ -35,11 +35,16 @@ def vessel_wizard():
         else:
             data = request.form.to_dict()
         
+        # Handle custom shipping line
+        shipping_line = data.get('shippingLine', '')
+        if shipping_line == 'Create Other':
+            shipping_line = data.get('customShippingLine', '').strip()
+        
         # Create vessel from wizard data
         vessel = Vessel(
             # Step 1: Vessel Information
             name=data.get('vesselName', '').strip(),
-            shipping_line=data.get('shippingLine', ''),
+            shipping_line=shipping_line,
             vessel_type=data.get('vesselType', ''),
             port_of_call=data.get('port', 'Colonel Island'),
             operation_start_date=datetime.fromisoformat(data.get('operationStartDate')).date() if data.get('operationStartDate') else None,
