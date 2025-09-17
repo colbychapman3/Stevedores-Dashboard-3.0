@@ -94,10 +94,18 @@ def vessel_wizard():
         print(f"✅ Vessel created successfully! ID: {vessel.id}, Name: {vessel.name}")
         print(f"📊 Vessel details - Shipping Line: {vessel.shipping_line}, Type: {vessel.vessel_type}")
         print(f"📅 Operation dates: {vessel.operation_start_date} to {vessel.operation_end_date}")
-        
+        print(f"🚢 Status: {vessel.status}, Wizard completed: {vessel.wizard_completed}")
+
         # Verify vessel was actually saved
         vessel_count = db.session.query(db.func.count(Vessel.id)).scalar()
         print(f"🔢 Total vessels in database now: {vessel_count}")
+
+        # Double-check by querying the vessel back
+        saved_vessel = Vessel.query.get(vessel.id)
+        if saved_vessel:
+            print(f"✅ Verification: Vessel {saved_vessel.id} successfully retrieved from database")
+        else:
+            print(f"❌ ERROR: Could not retrieve vessel {vessel.id} from database after creation!")
         
         if request.is_json:
             return jsonify({

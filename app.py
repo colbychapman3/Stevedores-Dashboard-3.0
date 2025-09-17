@@ -442,13 +442,24 @@ def dashboard():
         # Step 4: Query vessels with comprehensive error handling
         vessels = []
         try:
+            # Force session refresh to see latest data
+            db.session.expire_all()
+            db.session.commit()  # Ensure any pending transactions are committed
             # Test query with minimal columns first
             vessel_count = Vessel.query.count()
             logger.info(f"📊 Found {vessel_count} vessels in database")
-            
+
+            # Debug: List vessel IDs and names
+            vessel_ids = db.session.query(Vessel.id, Vessel.name).all()
+            logger.info(f"🔍 Vessel IDs in database: {[f'ID:{v[0]} Name:{v[1]}' for v in vessel_ids]}")
+
             # Now attempt full query
             vessels = Vessel.query.all()
             logger.info(f"✅ Successfully queried {len(vessels)} vessels")
+
+            # Debug: Log vessel details
+            for v in vessels:
+                logger.info(f"📋 Vessel: ID={v.id}, Name={v.name}, Status={v.status}, Created={getattr(v, 'created_at', 'N/A')}")
             
         except Exception as query_error:
             logger.error(f"❌ Vessel query failed: {query_error}")
