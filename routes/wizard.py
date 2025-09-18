@@ -25,15 +25,41 @@ def vessel_wizard():
     """Enhanced 4-step vessel creation wizard"""
     if request.method == 'GET':
         return render_template('wizard/vessel_wizard.html')
-    
+
     # Handle POST - process completed wizard
+    print(f"🔍 [WIZARD DEBUG] POST request received")
+
+    # Check for CSRF token in request
+    csrf_token_form = request.form.get('csrf_token')
+    csrf_token_header = request.headers.get('X-CSRFToken') or request.headers.get('X-CSRF-Token')
+    print(f"🔒 [CSRF DEBUG] CSRF token in form: {'✓' if csrf_token_form else '✗'}")
+    print(f"🔒 [CSRF DEBUG] CSRF token in headers: {'✓' if csrf_token_header else '✗'}")
+    if csrf_token_header:
+        print(f"🔒 [CSRF DEBUG] CSRF header token (first 10 chars): {csrf_token_header[:10]}...")
+    if csrf_token_form:
+        print(f"🔒 [CSRF DEBUG] CSRF form token (first 10 chars): {csrf_token_form[:10]}...")
+    print(f"🔍 [WIZARD DEBUG] Request method: {request.method}")
+    print(f"🔍 [WIZARD DEBUG] Request is_json: {request.is_json}")
+    print(f"🔍 [WIZARD DEBUG] Request content_type: {request.content_type}")
+    print(f"🔍 [WIZARD DEBUG] Request headers: {dict(request.headers)}")
+
     try:
         db, Vessel, CargoTally = get_db_and_models()
+        print(f"🔍 [WIZARD DEBUG] Database models loaded successfully")
 
         if request.is_json:
             data = request.get_json()
+            print(f"🔍 [WIZARD DEBUG] JSON data received: {len(data) if data else 0} fields")
+            if data:
+                print(f"🔍 [WIZARD DEBUG] JSON keys: {list(data.keys())}")
         else:
             data = request.form.to_dict()
+            print(f"🔍 [WIZARD DEBUG] Form data received: {len(data)} fields")
+            if data:
+                print(f"🔍 [WIZARD DEBUG] Form keys: {list(data.keys())}")
+
+        if not data:
+            raise ValueError("No data received in request")
         
         # Handle custom shipping line
         shipping_line = data.get('shippingLine', '')
@@ -119,8 +145,22 @@ def vessel_wizard():
         return redirect(url_for('dashboard'))
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ [WIZARD ERROR] Exception occurred: {type(e).__name__}: {str(e)}")
+        print(f"❌ [WIZARD ERROR] Full traceback:")
+        print(error_details)
+        print(f"❌ [WIZARD ERROR] Request was JSON: {request.is_json}")
+
         if request.is_json:
-            return jsonify({'error': str(e)}), 500
+            print(f"❌ [WIZARD ERROR] Returning JSON error response")
+            return jsonify({
+                'error': str(e),
+                'error_type': type(e).__name__,
+                'debug_info': 'Check server logs for detailed traceback'
+            }), 500
+
+        print(f"❌ [WIZARD ERROR] Returning form error response")
         flash(f'Error creating vessel operation: {str(e)}', 'error')
         return render_template('wizard/vessel_wizard.html')
 
