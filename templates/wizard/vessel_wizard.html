@@ -168,6 +168,9 @@
 
         <!-- Wizard Form -->
         <form id="vesselWizardForm" action="/wizard/" method="POST" onsubmit="handleFormSubmission(event)" class="wizard-card rounded-xl shadow-lg p-8 max-w-4xl mx-auto">
+            <!-- CSRF Token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
             <!-- Step 1: Vessel Information -->
             <div id="step1" class="wizard-step">
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">

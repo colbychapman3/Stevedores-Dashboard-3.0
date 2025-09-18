@@ -397,11 +397,15 @@ function saveStepData(step) {
 }
 
 function saveToServer(step, stepData) {
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
     fetch('/wizard/api/save-step', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
             step: step,
             data: stepData
@@ -492,9 +496,15 @@ function processDocumentUpload(file) {
     
     const formData = new FormData();
     formData.append('document', file);
-    
+
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
     fetch('/wizard/api/document-upload', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
         body: formData
     })
     .then(response => response.json())
@@ -655,7 +665,7 @@ function generateReviewSummary() {
 }
 
 // Form Submission with Sync Manager Integration
-function handleFormSubmission(event) {
+async function handleFormSubmission(event) {
     event.preventDefault();
     
     // Validate all steps before submission
@@ -679,13 +689,23 @@ function handleFormSubmission(event) {
     console.log('👷 Total Drivers:', formData.totalDrivers);
     console.log('🚐 Number of Vans:', formData.numberOfVans);
     
-    // Try online submission first, fallback to sync manager
-    if (navigator.onLine) {
+    // Get CSRF token from form
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+    // Enhanced online detection - check both navigator.onLine and actual connectivity
+    const isOnline = await checkOnlineStatus();
+
+    if (isOnline) {
+        console.log('🌐 Online status confirmed, attempting server submission');
+
         fetch('/wizard/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
             },
+            credentials: 'same-origin',
             body: JSON.stringify(formData)
         })
         .then(response => {
@@ -711,8 +731,22 @@ function handleFormSubmission(event) {
             }
         })
         .catch(error => {
-            console.error('Online submission failed, using sync manager:', error);
-            handleOfflineSubmission(formData);
+            console.error('❌ Online submission failed:', error);
+
+            // Enhanced error handling for different types of failures
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                console.log('🔌 Network error detected, using offline mode');
+                handleOfflineSubmission(formData);
+            } else if (error.message.includes('HTTP 403') || error.message.includes('HTTP 400')) {
+                console.error('🔒 Authentication/CSRF error detected');
+                showAlert('Session expired or security token invalid. Please refresh the page and try again.', 'error');
+            } else if (error.message.includes('HTTP 500')) {
+                console.error('🚨 Server internal error');
+                showAlert('Server error occurred. Please try again or contact support.', 'error');
+            } else {
+                console.error('🚨 Unknown server error, not using offline mode:', error.message);
+                showAlert(`Submission failed: ${error.message}`, 'error');
+            }
         });
     } else {
         // Direct offline submission
@@ -988,7 +1022,13 @@ async function applyAutoFill() {
     if (banner) banner.remove();
     
     // Clear server-side auto-fill data
-    await fetch('/document/clear-auto-fill', { method: 'POST', redirect: 'follow' });
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    await fetch('/document/clear-auto-fill', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        credentials: 'same-origin',
+        redirect: 'follow'
+    });
     
     showAlert('Form auto-filled successfully!', 'success');
 }
@@ -998,7 +1038,13 @@ function dismissAutoFill() {
     if (banner) banner.remove();
     
     // Clear server-side auto-fill data
-    fetch('/document/clear-auto-fill', { method: 'POST', redirect: 'follow' });
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    fetch('/document/clear-auto-fill', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        credentials: 'same-origin',
+        redirect: 'follow'
+    });
 }
 
 function setupDocumentUpload() {
@@ -1026,9 +1072,15 @@ async function handleDocumentUpload(event) {
         // Try server-side processing first
         const formData = new FormData();
         formData.append('document', file);
-        
+
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
         const response = await fetch('/document/upload', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin',
             body: formData
         });
         
@@ -1073,9 +1125,15 @@ async function processTextContent() {
     
     try {
         // Try server-side processing first
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
         const response = await fetch('/document/process-text', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin',
             body: JSON.stringify({ text: text, filename: 'pasted_content.txt' })
         });
         
@@ -1479,5 +1537,30 @@ document.addEventListener('DOMContentLoaded', function() {
         numberOfLowDecksField.addEventListener('change', checkLowDeckWarning);
     }
 });
+
+// Enhanced online status checking
+async function checkOnlineStatus() {
+    // First check navigator.onLine
+    if (!navigator.onLine) {
+        console.log('❌ Navigator reports offline');
+        return false;
+    }
+
+    try {
+        // Test actual connectivity with a lightweight request
+        const response = await fetch('/auth/check-session', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-cache'
+        });
+
+        const isConnected = response.ok;
+        console.log(isConnected ? '✅ Server connectivity confirmed' : '❌ Server not reachable');
+        return isConnected;
+    } catch (error) {
+        console.log('❌ Connectivity test failed:', error.message);
+        return false;
+    }
+}
 
 console.log('Enhanced wizard with offline document processing loaded');
