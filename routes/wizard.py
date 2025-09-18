@@ -5,7 +5,6 @@ Ported from stevedores-dashboard-2.0 with offline support
 
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
 from flask_login import login_required, current_user
-from flask_wtf.csrf import exempt
 from datetime import datetime, time
 import json
 
