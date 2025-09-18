@@ -5,6 +5,7 @@ Ported from stevedores-dashboard-2.0 with offline support
 
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
 from flask_login import login_required, current_user
+from flask_wtf.csrf import exempt
 from datetime import datetime, time
 import json
 
@@ -29,11 +30,19 @@ def vessel_wizard():
     # Handle POST - process completed wizard
     try:
         db, Vessel, CargoTally = get_db_and_models()
-        
+
+        # Add debug logging for request details
+        print(f"🔍 Request method: {request.method}")
+        print(f"🔍 Request is_json: {request.is_json}")
+        print(f"🔍 Request content_type: {request.content_type}")
+        print(f"🔍 Request headers: {dict(request.headers)}")
+
         if request.is_json:
             data = request.get_json()
+            print(f"🔍 JSON data received: {len(data) if data else 0} fields")
         else:
             data = request.form.to_dict()
+            print(f"🔍 Form data received: {len(data)} fields")
         
         # Handle custom shipping line
         shipping_line = data.get('shippingLine', '')

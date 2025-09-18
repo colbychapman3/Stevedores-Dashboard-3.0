@@ -703,7 +703,8 @@ async function handleFormSubmission(event) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-CSRF-Token': csrfToken
             },
             credentials: 'same-origin',
             body: JSON.stringify(formData)
