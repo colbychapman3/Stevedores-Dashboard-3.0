@@ -365,7 +365,6 @@ app.register_blueprint(health_bp)  # No prefix - health checks at /health
 csrf.exempt(document_bp)
 csrf.exempt(sync_bp)
 csrf.exempt(offline_dashboard_bp)
-csrf.exempt(wizard_bp)  # Temporary exemption to test wizard submission
 
 # SECURITY FIX: Remove CSRF exemption from auth routes to prevent CSRF attacks
 # csrf.exempt(auth_bp)  # REMOVED - auth routes should be CSRF protected

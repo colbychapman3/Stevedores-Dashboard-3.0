@@ -1549,7 +1549,7 @@ async function checkOnlineStatus() {
 
     try {
         // Test actual connectivity with a lightweight request
-        const response = await fetch('/auth/check-session', {
+        const response = await fetch('/auth/user', {
             method: 'GET',
             credentials: 'same-origin',
             cache: 'no-cache'
