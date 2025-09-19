@@ -10,6 +10,15 @@ import json
 
 wizard_bp = Blueprint('wizard', __name__)
 
+def safe_int(value, default=0):
+    """Safely convert value to int, handling empty strings and None"""
+    if value is None or value == '' or value == 'undefined':
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
 def get_db_and_models():
     """Get database and models to avoid circular imports"""
     from app import db
@@ -87,24 +96,24 @@ def vessel_wizard():
             cargo_configuration=json.dumps(collect_cargo_configuration(data)),
             
             # Step 4: Operational Parameters
-            total_drivers=int(data.get('totalDrivers', 0)),
+            total_drivers=safe_int(data.get('totalDrivers')),
             shift_start_time=time.fromisoformat(data.get('shiftStartTime')) if data.get('shiftStartTime') else None,
             shift_end_time=time.fromisoformat(data.get('shiftEndTime')) if data.get('shiftEndTime') else None,
             ship_start_time=time.fromisoformat(data.get('shipStartTime')) if data.get('shipStartTime') else None,
             ship_complete_time=time.fromisoformat(data.get('shipCompleteTime')) if data.get('shipCompleteTime') else None,
-            number_of_breaks=int(data.get('numberOfBreaks', 0)),
+            number_of_breaks=safe_int(data.get('numberOfBreaks')),
             target_completion=datetime.fromisoformat(data.get('targetCompletion')) if data.get('targetCompletion') else None,
-            number_of_vans=int(data.get('numberOfVans', 0)),
-            number_of_wagons=int(data.get('numberOfWagons', 0)),
-            number_of_low_decks=int(data.get('numberOfLowDecks', 0)),
+            number_of_vans=safe_int(data.get('numberOfVans')),
+            number_of_wagons=safe_int(data.get('numberOfWagons')),
+            number_of_low_decks=safe_int(data.get('numberOfLowDecks')),
             van_details=json.dumps(collect_van_details(data)),
             wagon_details=json.dumps(collect_wagon_details(data)),
             
             # Legacy fields for backward compatibility
             eta=datetime.fromisoformat(data.get('operationStartDate')) if data.get('operationStartDate') else None,
-            total_cargo_capacity=int(data.get('dischargeTotalAutos', 0)) + int(data.get('loadingTotalAutos', 0)) + int(data.get('loadbackTotalAutos', 0)),
-            drivers_assigned=int(data.get('totalDrivers', 0)),
-            tico_vehicles_needed=int(data.get('numberOfVans', 0)) + int(data.get('numberOfWagons', 0)),
+            total_cargo_capacity=safe_int(data.get('dischargeTotalAutos')) + safe_int(data.get('loadingTotalAutos')) + safe_int(data.get('loadbackTotalAutos')),
+            drivers_assigned=safe_int(data.get('totalDrivers')),
+            tico_vehicles_needed=safe_int(data.get('numberOfVans')) + safe_int(data.get('numberOfWagons')),
             
             # Status and metadata
             status='expected',
@@ -316,25 +325,25 @@ def collect_team_assignments(data):
     }
     
     # Collect auto operations team
-    auto_members = int(data.get('autoOperationsMembers', 0))
+    auto_members = safe_int(data.get('autoOperationsMembers'))
     for i in range(1, auto_members + 1):
         member_name = data.get(f'autoOperationsMember{i}', '')
         if member_name == 'Custom':
             member_name = data.get(f'autoOperationsMemberCustom{i}', '')
-        
+
         if member_name:
             teams['auto_operations'].append({
                 'name': member_name,
                 'position': i
             })
-    
+
     # Collect high heavy team
-    heavy_members = int(data.get('highHeavyMembers', 0))
+    heavy_members = safe_int(data.get('highHeavyMembers'))
     for i in range(1, heavy_members + 1):
         member_name = data.get(f'highHeavyMember{i}', '')
         if member_name == 'Custom':
             member_name = data.get(f'highHeavyMemberCustom{i}', '')
-        
+
         if member_name:
             teams['high_heavy'].append({
                 'name': member_name,
@@ -351,22 +360,22 @@ def collect_cargo_configuration(data):
     
     if operation_type in ['Discharge Only', 'Discharge + Loadback']:
         cargo_config['discharge'] = {
-            'total_autos': int(data.get('dischargeTotalAutos', 0)),
-            'heavy_equipment': int(data.get('dischargeHeavy', 0)),
+            'total_autos': safe_int(data.get('dischargeTotalAutos')),
+            'heavy_equipment': safe_int(data.get('dischargeHeavy')),
             'vehicle_types': collect_vehicle_types(data, 'discharge')
         }
-    
+
     if operation_type == 'Loading Only':
         cargo_config['loading'] = {
-            'total_autos': int(data.get('loadingTotalAutos', 0)),
-            'heavy_equipment': int(data.get('loadingHeavy', 0)),
+            'total_autos': safe_int(data.get('loadingTotalAutos')),
+            'heavy_equipment': safe_int(data.get('loadingHeavy')),
             'vehicle_types': collect_vehicle_types(data, 'loading')
         }
-    
+
     if operation_type == 'Discharge + Loadback':
         cargo_config['loadback'] = {
-            'total_autos': int(data.get('loadbackTotalAutos', 0)),
-            'heavy_equipment': int(data.get('loadbackHeavy', 0)),
+            'total_autos': safe_int(data.get('loadbackTotalAutos')),
+            'heavy_equipment': safe_int(data.get('loadbackHeavy')),
             'vehicle_types': collect_vehicle_types(data, 'loadback')
         }
     
@@ -388,7 +397,7 @@ def collect_vehicle_types(data, section):
         
         vehicle_types.append({
             'type': vehicle_type,
-            'quantity': int(quantity) if quantity else 0,
+            'quantity': safe_int(quantity),
             'location': location
         })
         
@@ -399,35 +408,35 @@ def collect_vehicle_types(data, section):
 def collect_van_details(data):
     """Collect van details from form"""
     van_details = []
-    
-    num_vans = int(data.get('numberOfVans', 0))
+
+    num_vans = safe_int(data.get('numberOfVans'))
     for i in range(1, num_vans + 1):
         van_id = data.get(f'van{i}Id', '')
         driver_name = data.get(f'van{i}Driver', '')
-        
+
         if van_id or driver_name:
             van_details.append({
                 'van_number': i,
                 'id_number': van_id,
                 'driver_name': driver_name
             })
-    
+
     return van_details
 
 def collect_wagon_details(data):
     """Collect wagon details from form"""
     wagon_details = []
-    
-    num_wagons = int(data.get('numberOfWagons', 0))
+
+    num_wagons = safe_int(data.get('numberOfWagons'))
     for i in range(1, num_wagons + 1):
         wagon_id = data.get(f'wagon{i}Id', '')
         driver_name = data.get(f'wagon{i}Driver', '')
-        
+
         if wagon_id or driver_name:
             wagon_details.append({
                 'wagon_number': i,
                 'id_number': wagon_id,
                 'driver_name': driver_name
             })
-    
+
     return wagon_details
